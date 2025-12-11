@@ -71,15 +71,30 @@
                 <div class="grid grid-cols-3 gap-2 text-center mb-4">
                     <div class="bg-light p-2 rounded">
                         <p class="text-xs text-gray-500">CM</p>
-                        <p class="font-bold text-primary">{{ item.subject.total_cm }}</p>
+                        <p class="font-bold text-primary">{{ item.progress.CM }} / {{ item.subject.total_cm }}</p>
+                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                            <div class="bg-primary h-1.5 rounded-full"
+                                style="width: {{ (item.progress.CM / item.subject.total_cm * 100) if item.subject.total_cm > 0 else 0 }}%">
+                            </div>
+                        </div>
                     </div>
                     <div class="bg-light p-2 rounded">
                         <p class="text-xs text-gray-500">TD</p>
-                        <p class="font-bold text-secondary">{{ item.subject.total_td }}</p>
+                        <p class="font-bold text-secondary">{{ item.progress.TD }} / {{ item.subject.total_td }}</p>
+                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                            <div class="bg-secondary h-1.5 rounded-full"
+                                style="width: {{ (item.progress.TD / item.subject.total_td * 100) if item.subject.total_td > 0 else 0 }}%">
+                            </div>
+                        </div>
                     </div>
                     <div class="bg-light p-2 rounded">
                         <p class="text-xs text-gray-500">TP</p>
-                        <p class="font-bold text-accent">{{ item.subject.total_tp }}</p>
+                        <p class="font-bold text-accent">{{ item.progress.TP }} / {{ item.subject.total_tp }}</p>
+                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                            <div class="bg-accent h-1.5 rounded-full"
+                                style="width: {{ (item.progress.TP / item.subject.total_tp * 100) if item.subject.total_tp > 0 else 0 }}%">
+                            </div>
+                        </div>
                     </div>
                 </div>
 

@@ -11,6 +11,30 @@ from io import BytesIO
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 
+@admin_bp.route('/api/filter-options')
+@login_required
+@admin_required
+def filter_options():
+    """API to get options for dynamic dropdowns"""
+    type = request.args.get('type')
+    parent_id = request.args.get('parent_id')
+    
+    if not type or not parent_id:
+        return jsonify([])
+        
+    if type == 'tracks':
+        # Get tracks for a department
+        tracks = Track.query.filter_by(department_id=parent_id).order_by(Track.name).all()
+        return jsonify([{'id': t.id, 'name': t.name, 'level': t.level_display} for t in tracks])
+        
+    elif type == 'years':
+        # Get academic years for a track
+        years = AcademicYear.query.filter_by(track_id=parent_id).order_by(AcademicYear.order).all()
+        return jsonify([{'id': y.id, 'name': y.name} for y in years])
+        
+    return jsonify([])
+
+
 @admin_bp.route('/dashboard')
 @login_required
 @admin_required
@@ -324,6 +348,7 @@ def import_teachers():
                 email = str(row[0]).strip().lower() if row[0] else None
                 first_name = str(row[1]).strip() if row[1] else None
                 last_name = str(row[2]).strip() if row[2] else None
+                matricule = str(row[3]).strip() if len(row) > 3 and row[3] else None
                 
                 if not email or not first_name or not last_name:
                     errors.append(f"Ligne {row_num}: données manquantes")
@@ -332,11 +357,16 @@ def import_teachers():
                 if User.query.filter_by(email=email).first():
                     errors.append(f"Ligne {row_num}: email déjà existant ({email})")
                     continue
+
+                if matricule and User.query.filter_by(matricule=matricule).first():
+                    errors.append(f"Ligne {row_num}: matricule déjà existant ({matricule})")
+                    continue
                 
                 teacher = User(
                     email=email,
                     first_name=first_name,
                     last_name=last_name,
+                    matricule=matricule,
                     role='teacher',
                     department_id=department_id
                 )
@@ -1006,3 +1036,236 @@ def global_statistics():
     }
     
     return render_template('admin/statistics.html', tracks_data=tracks_data, overall=overall)
+# ==================== STUDENT MANAGEMENT ====================
+
+@admin_bp.route('/students/create', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def create_student():
+    """Create a new student"""
+    departments = Department.query.order_by(Department.name).all()
+    
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        first_name = request.form.get('first_name', '').strip()
+        last_name = request.form.get('last_name', '').strip()
+        matricule = request.form.get('matricule', '').strip()
+        track_id = request.form.get('track_id', type=int)
+        academic_year_id = request.form.get('academic_year_id', type=int)
+        
+        if not email or not first_name or not last_name:
+            flash('Tous les champs obligatoires doivent être remplis.', 'danger')
+            return render_template('admin/student_form.html', departments=departments)
+        
+        if User.query.filter_by(email=email).first():
+            flash('Un utilisateur avec cet email existe déjà.', 'danger')
+            return render_template('admin/student_form.html', departments=departments)
+        
+        if matricule and User.query.filter_by(matricule=matricule).first():
+            flash('Un utilisateur avec ce matricule existe déjà.', 'danger')
+            return render_template('admin/student_form.html', departments=departments)
+        
+        student = User(
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            matricule=matricule if matricule else None,
+            role='student',
+            current_year_id=academic_year_id if academic_year_id else None
+        )
+        
+        # Assign to track if selected
+        if track_id:
+            track = Track.query.get(track_id)
+            if track:
+                student.enrolled_tracks.append(track)
+                student.department_id = track.department_id # Assign department for reference
+        
+        db.session.add(student)
+        db.session.commit()
+        
+        # Send password creation email
+        try:
+            send_password_creation_email(student)
+            flash(f'Étudiant "{first_name} {last_name}" créé. Email envoyé!', 'success')
+        except Exception as e:
+            flash(f'Étudiant créé mais erreur d\'envoi email: {str(e)}', 'warning')
+        
+        return redirect(url_for('admin.students'))
+    
+    return render_template('admin/student_form.html', departments=departments)
+
+
+@admin_bp.route('/students/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_student(id):
+    """Edit a student"""
+    student = User.query.get_or_404(id)
+    if student.role != 'student':
+        flash('Utilisateur non trouvé.', 'danger')
+        return redirect(url_for('admin.students'))
+    
+    departments = Department.query.order_by(Department.name).all()
+    
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        first_name = request.form.get('first_name', '').strip()
+        last_name = request.form.get('last_name', '').strip()
+        matricule = request.form.get('matricule', '').strip()
+        track_id = request.form.get('track_id', type=int)
+        academic_year_id = request.form.get('academic_year_id', type=int)
+        
+        if not email or not first_name or not last_name:
+            flash('Tous les champs obligatoires doivent être remplis.', 'danger')
+            return render_template('admin/student_form.html', student=student, departments=departments)
+        
+        existing = User.query.filter_by(email=email).first()
+        if existing and existing.id != student.id:
+            flash('Un utilisateur avec cet email existe déjà.', 'danger')
+            return render_template('admin/student_form.html', student=student, departments=departments)
+        
+        if matricule:
+            existing_mat = User.query.filter_by(matricule=matricule).first()
+            if existing_mat and existing_mat.id != student.id:
+                flash('Un utilisateur avec ce matricule existe déjà.', 'danger')
+                return render_template('admin/student_form.html', student=student, departments=departments)
+        
+        student.email = email
+        student.first_name = first_name
+        student.last_name = last_name
+        student.matricule = matricule if matricule else None
+        student.current_year_id = academic_year_id if academic_year_id else None
+        
+        # Update track enrollment
+        student.enrolled_tracks = [] # Clear existing
+        if track_id:
+            track = Track.query.get(track_id)
+            if track:
+                student.enrolled_tracks.append(track)
+                student.department_id = track.department_id
+                
+        db.session.commit()
+        
+        flash(f'Étudiant modifié avec succès!', 'success')
+        return redirect(url_for('admin.students'))
+    
+    return render_template('admin/student_form.html', student=student, departments=departments)
+
+
+@admin_bp.route('/students/<int:id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_student(id):
+    """Delete a student"""
+    student = User.query.get_or_404(id)
+    if student.role != 'student':
+        flash('Utilisateur non trouvé.', 'danger')
+        return redirect(url_for('admin.students'))
+    
+    name = student.full_name
+    db.session.delete(student)
+    db.session.commit()
+    
+    flash(f'Étudiant "{name}" supprimé avec succès!', 'success')
+    return redirect(url_for('admin.students'))
+
+
+@admin_bp.route('/students/import', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def import_students():
+    """Import students from Excel"""
+    departments = Department.query.order_by(Department.name).all()
+    
+    if request.method == 'POST':
+        track_id = request.form.get('track_id', type=int)
+        academic_year_id = request.form.get('academic_year_id', type=int)
+
+        if not track_id or not academic_year_id:
+            flash('Veuillez sélectionner une filière et une année.', 'danger')
+            return render_template('admin/import_students.html', departments=departments)
+            
+        track = Track.query.get(track_id)
+        if not track:
+             flash('Filière invalide.', 'danger')
+             return render_template('admin/import_students.html', departments=departments)
+
+        if 'file' not in request.files:
+            flash('Aucun fichier sélectionné.', 'danger')
+            return render_template('admin/import_students.html', departments=departments)
+        
+        file = request.files['file']
+        
+        if file.filename == '':
+            flash('Aucun fichier sélectionné.', 'danger')
+            return render_template('admin/import_students.html', departments=departments)
+        
+        if not file.filename.endswith(('.xlsx', '.xls')):
+            flash('Format de fichier invalide. Utilisez un fichier Excel (.xlsx).', 'danger')
+            return render_template('admin/import_students.html', departments=departments)
+        
+        try:
+            wb = openpyxl.load_workbook(BytesIO(file.read()))
+            ws = wb.active
+            
+            imported = 0
+            errors = []
+            
+            for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if not row[0]:  # Skip if email is missing
+                    continue
+                
+                email = str(row[0]).strip().lower() if row[0] else None
+                first_name = str(row[1]).strip() if len(row) > 1 and row[1] else None
+                last_name = str(row[2]).strip() if len(row) > 2 and row[2] else None
+                matricule = str(row[3]).strip() if len(row) > 3 and row[3] else None
+                
+                if not email or not first_name or not last_name:
+                    errors.append(f"Ligne {row_num}: données manquantes (Email, Prénom, Nom requis)")
+                    continue
+                
+                if User.query.filter_by(email=email).first():
+                    errors.append(f"Ligne {row_num}: email déjà existant ({email})")
+                    continue
+
+                if matricule and User.query.filter_by(matricule=matricule).first():
+                    errors.append(f"Ligne {row_num}: matricule déjà existant ({matricule})")
+                    continue
+                
+                student = User(
+                    email=email,
+                    first_name=first_name,
+                    last_name=last_name,
+                    matricule=matricule,
+                    role='student',
+                    current_year_id=academic_year_id,
+                    department_id=track.department_id
+                )
+                
+                # Assign to selected track
+                student.enrolled_tracks.append(track)
+                
+                db.session.add(student)
+                
+                try:
+                    send_password_creation_email(student)
+                except:
+                    pass
+                
+                imported += 1
+            
+            db.session.commit()
+            
+            if imported > 0:
+                flash(f'{imported} étudiant(s) importé(s) dans {track.name} (Année ID: {academic_year_id}) !', 'success')
+            if errors:
+                flash(f'{len(errors)} erreur(s): ' + '; '.join(errors[:3]), 'warning')
+            
+            return redirect(url_for('admin.students'))
+            
+        except Exception as e:
+            flash(f'Erreur lors de l\'import: {str(e)}', 'danger')
+            return render_template('admin/import_students.html', departments=departments)
+    
+    return render_template('admin/import_students.html', departments=departments)

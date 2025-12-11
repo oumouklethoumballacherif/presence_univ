@@ -5,63 +5,8 @@
 {% block body %}
 <div class="flex min-h-screen">
     <!-- Sidebar -->
-    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
-        <div class="mb-8">
-            <div class="flex items-center space-x-3">
-                <div class="bg-white p-2 rounded-lg">
-                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
-                </div>
-                <div>
-                    <h2 class="text-white font-bold">UIR Présence</h2>
-                    <p class="text-white/60 text-sm">Administration</p>
-                </div>
-            </div>
-        </div>
+    {% include "admin/sidebar.html" %}
 
-        <nav class="space-y-2">
-            <a href="{{ url_for('admin.dashboard') }}"
-                class="sidebar-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
-                <i class="fas fa-home"></i>
-                Tableau de bord
-            </a>
-            <a href="{{ url_for('admin.departments') }}"
-                class="sidebar-link {% if 'department' in request.endpoint %}active{% endif %}">
-                <i class="fas fa-building"></i>
-                Départements
-            </a>
-            <a href="{{ url_for('admin.tracks') }}"
-                class="sidebar-link {% if 'track' in request.endpoint %}active{% endif %}">
-                <i class="fas fa-graduation-cap"></i>
-                Filières
-            </a>
-            <a href="{{ url_for('admin.teachers') }}"
-                class="sidebar-link {% if 'teacher' in request.endpoint %}active{% endif %}">
-                <i class="fas fa-chalkboard-teacher"></i>
-                Enseignants
-            </a>
-            <a href="{{ url_for('admin.students') }}"
-                class="sidebar-link {% if 'student' in request.endpoint %}active{% endif %}">
-                <i class="fas fa-user-graduate"></i>
-                Étudiants
-            </a>
-            <a href="{{ url_for('admin.global_statistics') }}"
-                class="sidebar-link {% if 'statistic' in request.endpoint %}active{% endif %}">
-                <i class="fas fa-chart-bar"></i>
-                Statistiques
-            </a>
-        </nav>
-
-        <div class="absolute bottom-6 left-6 right-6">
-            <div class="p-4 bg-white/10 rounded-lg mb-4">
-                <p class="text-white/80 text-sm">Connecté en tant que</p>
-                <p class="text-white font-semibold">{{ current_user.full_name }}</p>
-            </div>
-            <a href="{{ url_for('auth.logout') }}" class="sidebar-link text-red-300 hover:text-red-200">
-                <i class="fas fa-sign-out-alt"></i>
-                Déconnexion
-            </a>
-        </div>
-    </aside>
 
     <!-- Main Content -->
     <main class="flex-1 ml-64 p-8">

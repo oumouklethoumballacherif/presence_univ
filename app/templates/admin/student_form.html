@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Modifier' if student else 'Nouveau' }} Étudiant - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    {% include "admin/sidebar.html" %}
+
+    <main class="flex-1 ml-64 p-8">
+        <div class="mb-8">
+            <a href="{{ url_for('admin.students') }}" class="text-primary hover:underline mb-2 inline-block">
+                <i class="fas fa-arrow-left mr-2"></i>Retour
+            </a>
+            <h1 class="text-3xl font-bold text-primary">{{ 'Modifier' if student else 'Nouvel' }} Étudiant</h1>
+            <p class="text-gray-500">Informations de l'étudiant</p>
+        </div>
+
+        <div class="card p-8 max-w-2xl">
+            <div id="error-message"
+                class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+                role="alert">
+                <span class="block sm:inline" id="error-text"></span>
+            </div>
+
+            <form method="POST">
+
+                <div class="grid grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Prénom <span
+                                class="text-red-500">*</span></label>
+                        <input type="text" name="first_name" value="{{ student.first_name if student else '' }}"
+                            class="input-field" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nom <span
+                                class="text-red-500">*</span></label>
+                        <input type="text" name="last_name" value="{{ student.last_name if student else '' }}"
+                            class="input-field" required>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email Institutionnel <span
+                            class="text-red-500">*</span></label>
+                    <input type="email" name="email" value="{{ student.email if student else '' }}" class="input-field"
+                        required>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Numéro Matricule</label>
+                    <input type="text" name="matricule" value="{{ student.matricule if student else '' }}"
+                        class="input-field">
+                </div>
+
+                <div class="mb-6 bg-gray-50 p-4 rounded-lg">
+                    <h3 class="text-sm font-bold text-gray-700 mb-4">Inscription Académique</h3>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Département</label>
+                        <select id="department_select" class="input-field" onchange="loadTracks()">
+                            <option value="">-- Sélectionner un département --</option>
+                            {% for dept in departments %}
+                            <option value="{{ dept.id }}" {% if student and student.department_id==dept.id %}selected{%
+                                endif %}>{{ dept.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Filière</label>
+                        <select id="track_select" name="track_id" class="input-field" onchange="loadYears()" disabled>
+                            <option value="">-- D'abord sélectionner un département --</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Année Académique</label>
+                        <select id="year_select" name="academic_year_id" class="input-field" disabled>
+                            <option value="">-- D'abord sélectionner une filière --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-4">
+                    <a href="{{ url_for('admin.students') }}" class="btn-secondary">Annuler</a>
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-save mr-2"></i>Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+
+<script>
+    {% if student %}
+    // Preload data for edit mode
+    window.addEventListener('load', async () => {
+        // Need to pass data from backend to properly pre-select
+        // For now, simpler to rely on basic selection or manual re-selection
+        // Ideally we'd have track_id and current_year_id available in template
+    });
+    {% endif %}
+
+    async function loadTracks() {
+        const deptId = document.getElementById('department_select').value;
+        const trackSelect = document.getElementById('track_select');
+        const yearSelect = document.getElementById('year_select');
+
+        trackSelect.innerHTML = '<option value="">Chargement...</option>';
+        trackSelect.disabled = true;
+        yearSelect.innerHTML = '<option value="">-- D\'abord sélectionner une filière --</option>';
+        yearSelect.disabled = true;
+
+        if (!deptId) {
+            trackSelect.innerHTML = '<option value="">-- D\'abord sélectionner un département --</option>';
+            return;
+        }
+
+        try {
+            const response = await fetch(`/admin/api/filter-options?type=tracks&parent_id=${deptId}`);
+            if (!response.ok) throw new Error('Network response was not ok');
+            const tracks = await response.json();
+
+            trackSelect.innerHTML = '<option value="">-- Sélectionner une filière --</option>';
+            tracks.forEach(track => {
+                trackSelect.innerHTML += `<option value="${track.id}">${track.name} (${track.level})</option>`;
+            });
+            trackSelect.disabled = false;
+        } catch (e) {
+            console.error('Erreur chargement filières:', e);
+            trackSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+        }
+    }
+
+    async function loadYears() {
+        const trackId = document.getElementById('track_select').value;
+        const yearSelect = document.getElementById('year_select');
+
+        yearSelect.innerHTML = '<option value="">Chargement...</option>';
+        yearSelect.disabled = true;
+
+        if (!trackId) {
+            yearSelect.innerHTML = '<option value="">-- D\'abord sélectionner une filière --</option>';
+            return;
+        }
+
+        try {
+            const response = await fetch(`/admin/api/filter-options?type=years&parent_id=${trackId}`);
+            if (!response.ok) throw new Error('Network response was not ok');
+            const years = await response.json();
+
+            yearSelect.innerHTML = '<option value="">-- Sélectionner une année --</option>';
+            years.forEach(year => {
+                yearSelect.innerHTML += `<option value="${year.id}">${year.name}</option>`;
+            });
+            yearSelect.disabled = false;
+        } catch (e) {
+            console.error('Erreur chargement années:', e);
+            yearSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+        }
+    }
+</script>
+{% endblock %}

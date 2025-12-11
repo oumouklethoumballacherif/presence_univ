@@ -4,29 +4,7 @@
 
 {% block body %}
 <div class="flex min-h-screen">
-    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
-        <div class="mb-8">
-            <div class="flex items-center space-x-3">
-                <div class="bg-white p-2 rounded-lg">
-                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
-                </div>
-                <div>
-                    <h2 class="text-white font-bold">UIR Présence</h2>
-                    <p class="text-white/60 text-sm">Administration</p>
-                </div>
-            </div>
-        </div>
-        <nav class="space-y-2">
-            <a href="{{ url_for('admin.dashboard') }}" class="sidebar-link"><i class="fas fa-home"></i>Tableau de
-                bord</a>
-            <a href="{{ url_for('admin.departments') }}" class="sidebar-link active"><i
-                    class="fas fa-building"></i>Départements</a>
-            <a href="{{ url_for('admin.teachers') }}" class="sidebar-link"><i
-                    class="fas fa-chalkboard-teacher"></i>Enseignants</a>
-            <a href="{{ url_for('admin.students') }}" class="sidebar-link"><i
-                    class="fas fa-user-graduate"></i>Étudiants</a>
-        </nav>
-    </aside>
+    {% include "admin/sidebar.html" %}
 
     <main class="flex-1 ml-64 p-8">
         <div class="mb-8">

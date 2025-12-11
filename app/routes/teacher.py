@@ -60,12 +60,21 @@ def dashboard():
         if semester_id and semester.id != semester_id:
             continue
             
+        # Calculate session progress
+        # Count sessions created by this teacher for this subject
+        sessions_count = {
+            'CM': Course.query.filter_by(teacher_id=current_user.id, subject_id=subject.id, course_type='CM').count(),
+            'TD': Course.query.filter_by(teacher_id=current_user.id, subject_id=subject.id, course_type='TD').count(),
+            'TP': Course.query.filter_by(teacher_id=current_user.id, subject_id=subject.id, course_type='TP').count()
+        }
+
         subjects.append({
             'subject': subject,
             'assignment': assignment,
             'track': track,
             'academic_year': year,
-            'semester': semester
+            'semester': semester,
+            'progress': sessions_count
         })
     
     # Dynamic tabs

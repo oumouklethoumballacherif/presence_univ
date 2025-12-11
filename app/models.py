@@ -57,12 +57,16 @@ class User(UserMixin, db.Model):
     token = db.Column(db.String(100), unique=True)
     token_expiry = db.Column(db.DateTime)
     
+    # Current Academic Year (L1, L2, M1, etc.)
+    current_year_id = db.Column(db.Integer, db.ForeignKey('academic_years.id'))
+    current_year = db.relationship('AcademicYear', foreign_keys=[current_year_id])
+    
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
     
     # Subject assignments
-    subject_assignments = db.relationship('TeacherSubjectAssignment', back_populates='teacher')
+    subject_assignments = db.relationship('TeacherSubjectAssignment', back_populates='teacher', cascade='all, delete-orphan')
     
     # Attendances (for students)
     attendances = db.relationship('Attendance', back_populates='student')
