@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Assigner Enseignant - {{ subject.name }} - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
+        <div class="mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2 rounded-lg">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
+                </div>
+                <div>
+                    <h2 class="text-white font-bold">UIR Présence</h2>
+                    <p class="text-white/60 text-sm">Administration</p>
+                </div>
+            </div>
+        </div>
+        <nav class="space-y-2">
+            <a href="{{ url_for('admin.dashboard') }}" class="sidebar-link"><i class="fas fa-home"></i>Tableau de
+                bord</a>
+            <a href="{{ url_for('admin.departments') }}" class="sidebar-link"><i
+                    class="fas fa-building"></i>Départements</a>
+            <a href="{{ url_for('admin.tracks') }}" class="sidebar-link active"><i
+                    class="fas fa-graduation-cap"></i>Filières</a>
+            <a href="{{ url_for('admin.teachers') }}" class="sidebar-link"><i
+                    class="fas fa-chalkboard-teacher"></i>Enseignants</a>
+            <a href="{{ url_for('admin.students') }}" class="sidebar-link"><i
+                    class="fas fa-user-graduate"></i>Étudiants</a>
+            <a href="{{ url_for('admin.global_statistics') }}" class="sidebar-link"><i
+                    class="fas fa-chart-bar"></i>Statistiques</a>
+        </nav>
+        <div class="absolute bottom-6 left-6 right-6">
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-link text-red-300"><i
+                    class="fas fa-sign-out-alt"></i>Déconnexion</a>
+        </div>
+    </aside>
+
+    <main class="flex-1 ml-64 p-8">
+        <div class="mb-8">
+            <a href="{{ url_for('admin.tracks') }}" class="text-primary hover:underline mb-2 inline-block">
+                <i class="fas fa-arrow-left mr-2"></i>Retour
+            </a>
+            <h1 class="text-3xl font-bold text-primary">Assigner Enseignant</h1>
+            <p class="text-gray-500">{{ subject.name }}</p>
+        </div>
+
+        <div class="card p-8 max-w-2xl">
+            <form method="POST">
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Enseignant</label>
+                        <select name="teacher_id" required class="input-field">
+                            <option value="">Sélectionner</option>
+                            {% for teacher in teachers %}
+                            <option value="{{ teacher.id }}">{{ teacher.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Types de séances</label>
+                        <div class="flex space-x-6">
+                            {% if subject.total_cm > 0 %}
+                            <label class="flex items-center">
+                                <input type="checkbox" name="teaches_cm" class="rounded text-primary mr-2">
+                                <span>CM ({{ subject.total_cm }})</span>
+                            </label>
+                            {% endif %}
+                            {% if subject.total_td > 0 %}
+                            <label class="flex items-center">
+                                <input type="checkbox" name="teaches_td" class="rounded text-primary mr-2">
+                                <span>TD ({{ subject.total_td }})</span>
+                            </label>
+                            {% endif %}
+                            {% if subject.total_tp > 0 %}
+                            <label class="flex items-center">
+                                <input type="checkbox" name="teaches_tp" class="rounded text-primary mr-2">
+                                <span>TP ({{ subject.total_tp }})</span>
+                            </label>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if subject.teacher_assignments %}
+                    <div class="p-4 bg-light rounded-lg">
+                        <p class="text-sm font-medium text-gray-700 mb-2">Enseignants actuels:</p>
+                        <ul class="text-sm text-gray-600">
+                            {% for assignment in subject.teacher_assignments %}
+                            <li class="flex items-center justify-between py-1">
+                                <span>{{ assignment.teacher.full_name }}</span>
+                                <span class="text-xs text-gray-400">
+                                    {% if assignment.teaches_cm %}CM {% endif %}
+                                    {% if assignment.teaches_td %}TD {% endif %}
+                                    {% if assignment.teaches_tp %}TP{% endif %}
+                                </span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <div class="flex justify-end space-x-4">
+                        <a href="{{ url_for('admin.tracks') }}" class="btn-secondary">Annuler</a>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save mr-2"></i>Assigner
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+{% endblock %}

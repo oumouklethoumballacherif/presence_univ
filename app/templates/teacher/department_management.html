@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion Département - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
+        <div class="mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2 rounded-lg">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
+                </div>
+                <div>
+                    <h2 class="text-white font-bold">UIR Présence</h2>
+                    <p class="text-white/60 text-sm">Chef Département</p>
+                </div>
+            </div>
+        </div>
+        <nav class="space-y-2">
+            <a href="{{ url_for('teacher.dashboard') }}" class="sidebar-link"><i class="fas fa-book"></i>Mes Cours</a>
+            <a href="{{ url_for('teacher.department_management') }}" class="sidebar-link active"><i
+                    class="fas fa-building"></i>Gestion Département</a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 ml-64 p-8">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-primary">{{ department.name }}</h1>
+                <p class="text-gray-500">Gestion des filières et enseignants</p>
+            </div>
+            <a href="{{ url_for('teacher.create_track') }}" class="btn-primary">
+                <i class="fas fa-plus mr-2"></i>Nouvelle filière
+            </a>
+        </div>
+
+        <!-- Tracks List -->
+        <div class="card">
+            <div class="p-4 border-b">
+                <h3 class="font-semibold text-primary">Filières du département</h3>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Nom</th>
+                            <th>Chef</th>
+                            <th>Enseignants</th>
+                            <th>Étudiants</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for track in tracks %}
+                        <tr>
+                            <td><span class="badge badge-primary">{{ track.code }}</span></td>
+                            <td class="font-medium">{{ track.name }}</td>
+                            <td>
+                                {% if track.head %}
+                                {{ track.head.full_name }}
+                                {% else %}
+                                <span class="text-red-500">Non assigné</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ track.assigned_teachers|length }}</td>
+                            <td>{{ track.students|length }}</td>
+                            <td>
+                                <div class="flex items-center space-x-2">
+                                    <a href="{{ url_for('teacher.assign_track_head', id=track.id) }}"
+                                        class="p-2 text-accent hover:bg-accent/10 rounded-lg" title="Assigner chef">
+                                        <i class="fas fa-user-tie"></i>
+                                    </a>
+                                    <a href="{{ url_for('teacher.assign_track_teachers', id=track.id) }}"
+                                        class="p-2 text-secondary hover:bg-secondary/10 rounded-lg" title="Enseignants">
+                                        <i class="fas fa-users"></i>
+                                    </a>
+                                    <a href="{{ url_for('teacher.edit_track', id=track.id) }}"
+                                        class="p-2 text-primary hover:bg-primary/10 rounded-lg" title="Modifier">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <form action="{{ url_for('teacher.delete_track', id=track.id) }}" method="POST"
+                                        class="inline" onsubmit="return confirm('Supprimer cette filière?');">
+                                        <button type="submit" class="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-gray-500 py-8">
+                                Aucune filière. <a href="{{ url_for('teacher.create_track') }}"
+                                    class="text-primary hover:underline">Créer la première</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

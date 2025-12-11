@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Mes Cours - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    {% include 'teacher/sidebar.html' %}
+
+    <main class="flex-1 ml-64 p-8">
+        <div class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-primary">Mes Cours</h1>
+                <p class="text-gray-500">Historique et séances à venir</p>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card p-4 mb-6">
+            <form method="GET" class="flex items-center space-x-4">
+                <select name="track_id" id="track_select" class="input-field">
+                    <option value="">Toutes les filières</option>
+                    {% for track in tracks %}
+                    <option value="{{ track.id }}" {% if selected_track==track.id %}selected{% endif %}>{{ track.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+
+                <select name="academic_year_id" id="year_select" class="input-field">
+                    <option value="">Toutes les années</option>
+                    {% for year in years %}
+                    <option value="{{ year.id }}" {% if selected_year==year.id %}selected{% endif %}>
+                        {{ year.name }} {% if not selected_track %} - {{ year.track.name }}{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+
+                <select name="semester_id" id="semester_select" class="input-field">
+                    <option value="">Tous les semestres</option>
+                    {% for semester in semesters %}
+                    <option value="{{ semester.id }}" {% if selected_semester==semester.id %}selected{% endif %}>
+                        {{ semester.name }} {% if not selected_year %} - {{ semester.academic_year.name }}{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+
+                <select name="subject_id" id="subject_select" class="input-field">
+                    <option value="">Toutes les matières</option>
+                    {% for subject in subjects %}
+                    <option value="{{ subject.id }}" {% if selected_subject==subject.id %}selected{% endif %}>{{
+                        subject.name }}</option>
+                    {% endfor %}
+                </select>
+
+                <select name="status" class="input-field">
+                    <option value="">Tous les statuts</option>
+                    <option value="pending" {% if selected_status=='pending' %}selected{% endif %}>En attente</option>
+                    <option value="active" {% if selected_status=='active' %}selected{% endif %}>En cours</option>
+                    <option value="completed" {% if selected_status=='completed' %}selected{% endif %}>Terminé</option>
+                </select>
+                <button type="submit" class="btn-primary"><i class="fas fa-filter mr-2"></i>Filtrer</button>
+            </form>
+        </div>
+
+        <div class="card overflow-hidden">
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Matière</th>
+                            <th>Type</th>
+                            <th>Titre</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for course in courses %}
+                        <tr>
+                            <td>
+                                <div class="font-medium">
+                                    {% if course.started_at %}
+                                    {{ course.started_at.strftime('%d/%m/%Y') }}
+                                    {% else %}
+                                    {{ course.created_at.strftime('%d/%m/%Y') }}
+                                    {% endif %}
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    {% if course.started_at %}
+                                    {{ course.started_at.strftime('%H:%M') }}
+                                    {% else %}
+                                    {{ course.created_at.strftime('%H:%M') }} (Créé)
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="font-medium text-primary">{{ course.subject.name }}</div>
+                                <div class="text-xs text-gray-500">{{ course.subject.semester.academic_year.track.name
+                                    }}</div>
+                            </td>
+                            <td>
+                                <span class="px-2 py-1 rounded text-xs font-semibold
+                                    {% if course.course_type == 'CM' %}bg-blue-100 text-blue-800
+                                    {% elif course.course_type == 'TD' %}bg-green-100 text-green-800
+                                    {% else %}bg-purple-100 text-purple-800{% endif %}">
+                                    {{ course.course_type }}
+                                </span>
+                            </td>
+                            <td>{{ course.title }}</td>
+                            <td>
+                                {% if course.status == 'pending' %}
+                                <span class="badge bg-yellow-100 text-yellow-800">En attente</span>
+                                {% elif course.status == 'active' %}
+                                <span class="badge bg-green-100 text-green-800">En cours</span>
+                                {% else %}
+                                <span class="badge bg-gray-100 text-gray-800">Terminé</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="flex space-x-2">
+                                    <a href="{{ url_for('teacher.course_detail', id=course.id) }}"
+                                        class="text-gray-600 hover:text-primary" title="Détails">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if course.status == 'pending' %}
+                                    <form action="{{ url_for('teacher.start_course', id=course.id) }}" method="POST"
+                                        class="inline">
+                                        <button type="submit" class="text-green-600 hover:text-green-800"
+                                            title="Démarrer">
+                                            <i class="fas fa-play"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-gray-500 py-8">
+                                Aucun cours trouvé
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const trackSelect = document.getElementById('track_select');
+        const yearSelect = document.getElementById('year_select');
+        const semesterSelect = document.getElementById('semester_select');
+        const subjectSelect = document.getElementById('subject_select');
+
+        async function fetchOptions(trackId, yearId, semesterId) {
+            const params = new URLSearchParams();
+            if (trackId) params.append('track_id', trackId);
+            if (yearId) params.append('year_id', yearId);
+            if (semesterId) params.append('semester_id', semesterId);
+            const response = await fetch(`/teacher/api/filter-options?${params.toString()}`);
+            return await response.json();
+        }
+
+        async function onTrackChange() {
+            const trackId = trackSelect.value;
+
+            // Reset downstream filters
+            resetSelect(yearSelect, 'Toutes les années');
+            resetSelect(semesterSelect, 'Tous les semestres');
+            resetSelect(subjectSelect, 'Toutes les matières');
+
+            // Always fetch options, even if trackId is empty (returns all)
+            try {
+                const data = await fetchOptions(trackId, null, null);
+                // Populate Years, Semesters, Subjects
+                populateSelect(yearSelect, data.years, 'Toutes les années');
+                populateSelect(semesterSelect, data.semesters, 'Tous les semestres');
+                populateSelect(subjectSelect, data.subjects, 'Toutes les matières');
+            } catch (error) {
+                console.error('Error fetching options:', error);
+            }
+        }
+
+        async function onYearChange() {
+            const trackId = trackSelect.value;
+            const yearId = yearSelect.value;
+
+            // Reset downstream filter
+            resetSelect(semesterSelect, 'Tous les semestres');
+            resetSelect(subjectSelect, 'Toutes les matières');
+
+            try {
+                const data = await fetchOptions(trackId, yearId, null);
+                // Populate Semesters and Subjects
+                populateSelect(semesterSelect, data.semesters, 'Tous les semestres');
+                populateSelect(subjectSelect, data.subjects, 'Toutes les matières');
+            } catch (error) {
+                console.error('Error fetching options:', error);
+            }
+        }
+
+        async function onSemesterChange() {
+            const trackId = trackSelect.value;
+            const yearId = yearSelect.value;
+            const semesterId = semesterSelect.value;
+
+            // Reset downstream filter
+            resetSelect(subjectSelect, 'Toutes les matières');
+
+            try {
+                const data = await fetchOptions(trackId, yearId, semesterId);
+                // Populate Subjects
+                populateSelect(subjectSelect, data.subjects, 'Toutes les matières');
+            } catch (error) {
+                console.error('Error fetching subjects:', error);
+            }
+        }
+
+        function populateSelect(selectElement, items, defaultText) {
+            selectElement.innerHTML = `<option value="">${defaultText}</option>`;
+            selectElement.disabled = false;
+
+            items.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.name;
+                selectElement.appendChild(option);
+            });
+        }
+
+        function resetSelect(selectElement, defaultText) {
+            selectElement.innerHTML = `<option value="">${defaultText}</option>`;
+            selectElement.value = '';
+        }
+
+        trackSelect.addEventListener('change', onTrackChange);
+        yearSelect.addEventListener('change', onYearChange);
+        semesterSelect.addEventListener('change', onSemesterChange);
+
+        // Initial State Validation: removed aggressively clearing resets.
+    });
+</script>
+{% endblock %}

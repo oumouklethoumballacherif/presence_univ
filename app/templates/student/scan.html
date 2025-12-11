@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Scanner QR - UIR Présence{% endblock %}
+
+{% block extra_head %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+    #reader {
+        width: 100%;
+        max-width: 400px;
+        margin: 0 auto;
+    }
+
+    #reader video {
+        border-radius: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="min-h-screen gradient-bg flex flex-col items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full">
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-16 mx-auto mb-4">
+            <h1 class="text-2xl font-bold text-primary">Scanner le QR Code</h1>
+            <p class="text-gray-500">Pointez votre caméra vers le QR code</p>
+        </div>
+
+        <!-- Scanner -->
+        <div id="reader" class="mb-6"></div>
+
+        <!-- Result -->
+        <div id="result" class="hidden">
+            <div id="success-message" class="p-4 bg-green-50 rounded-lg text-center hidden">
+                <i class="fas fa-check-circle text-4xl text-green-500 mb-2"></i>
+                <p class="text-green-700 font-semibold" id="result-text"></p>
+            </div>
+
+            <div id="error-message" class="p-4 bg-red-50 rounded-lg text-center hidden">
+                <i class="fas fa-times-circle text-4xl text-red-500 mb-2"></i>
+                <p class="text-red-700 font-semibold" id="error-text"></p>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="text-center text-gray-500 text-sm mt-4">
+            <p><i class="fas fa-info-circle mr-1"></i>Autorisez l'accès à la caméra pour scanner</p>
+        </div>
+
+        <!-- Back Button -->
+        <a href="{{ url_for('student.dashboard') }}" class="btn-secondary w-full text-center mt-6 block">
+            <i class="fas fa-arrow-left mr-2"></i>Retour au tableau de bord
+        </a>
+    </div>
+</div>
+
+<script>
+    let html5QrCode = null;
+
+    function onScanSuccess(decodedText, decodedResult) {
+        // Stop scanning
+        if (html5QrCode) {
+            html5QrCode.stop().catch(err => console.error(err));
+        }
+
+        // Send to server
+        fetch('{{ url_for("student.record_attendance") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ qr_data: decodedText })
+        })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').classList.remove('hidden');
+
+                if (data.success) {
+                    document.getElementById('success-message').classList.remove('hidden');
+                    document.getElementById('error-message').classList.add('hidden');
+
+                    let message = data.message;
+                    if (data.course) {
+                        message += `<br><small class="text-green-600">${data.course.subject} - ${data.course.type}</small>`;
+                    }
+                    document.getElementById('result-text').innerHTML = message;
+
+                    // Redirect after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = '{{ url_for("student.dashboard") }}';
+                    }, 2000);
+                } else {
+                    document.getElementById('error-message').classList.remove('hidden');
+                    document.getElementById('success-message').classList.add('hidden');
+                    document.getElementById('error-text').textContent = data.message;
+
+                    // Restart scanner after 3 seconds
+                    setTimeout(() => {
+                        document.getElementById('result').classList.add('hidden');
+                        startScanner();
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('result').classList.remove('hidden');
+                document.getElementById('error-message').classList.remove('hidden');
+                document.getElementById('error-text').textContent = 'Erreur de connexion';
+
+                setTimeout(() => {
+                    document.getElementById('result').classList.add('hidden');
+                    startScanner();
+                }, 3000);
+            });
+    }
+
+    function startScanner() {
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+            { facingMode: "environment" },
+            {
+                fps: 10,
+                qrbox: { width: 250, height: 250 }
+            },
+            onScanSuccess,
+            (errorMessage) => {
+                // Ignore scanning errors
+            }
+        ).catch(err => {
+            console.error('Camera error:', err);
+            document.getElementById('result').classList.remove('hidden');
+            document.getElementById('error-message').classList.remove('hidden');
+            document.getElementById('error-text').textContent = 'Impossible d\'accéder à la caméra';
+        });
+    }
+
+    // Start scanner on page load
+    document.addEventListener('DOMContentLoaded', startScanner);
+
+    // Stop scanner when leaving page
+    window.addEventListener('beforeunload', () => {
+        if (html5QrCode) {
+            html5QrCode.stop().catch(err => console.error(err));
+        }
+    });
+</script>
+{% endblock %}

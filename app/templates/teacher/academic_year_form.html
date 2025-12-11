@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Modifier' if year else 'Nouvelle' }} Année - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
+        <div class="mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2 rounded-lg">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 ml-64 p-8">
+        <div class="mb-8">
+            <a href="{{ url_for('teacher.track_management') }}" class="text-primary hover:underline mb-2 inline-block">
+                <i class="fas fa-arrow-left mr-2"></i>Retour
+            </a>
+            <h1 class="text-3xl font-bold text-primary">
+                {{ 'Modifier l\'année' if year else 'Nouvelle année académique' }}
+            </h1>
+        </div>
+
+        <div class="card p-8 max-w-2xl">
+            <form method="POST">
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nom *</label>
+                        <input type="text" name="name" required class="input-field"
+                            value="{{ year.name if year else '' }}" placeholder="Ex: 1ère année">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Ordre</label>
+                        <input type="number" name="order" class="input-field w-24"
+                            value="{{ year.order if year else 1 }}" min="1">
+                    </div>
+
+                    <div class="flex justify-end space-x-4">
+                        <a href="{{ url_for('teacher.track_management') }}" class="btn-secondary">Annuler</a>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save mr-2"></i>{{ 'Enregistrer' if year else 'Créer' }}
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+{% endblock %}

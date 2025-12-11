@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}QR Code de Présence - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen bg-gray-100 items-center justify-center p-4">
+    <div class="card p-8 max-w-4xl w-full text-center">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-primary mb-2">{{ course.title }}</h1>
+            <p class="text-xl text-gray-600">{{ course.subject.name }} - {{ course.course_type }}</p>
+            <div class="mt-4 inline-block bg-blue-100 text-blue-800 px-4 py-2 rounded-full font-mono text-xl"
+                id="timer">
+                Prochain code dans: 15s
+            </div>
+        </div>
+
+        <div class="flex justify-center mb-8">
+            <div class="bg-white p-4 rounded-xl shadow-lg border border-gray-200">
+                <img id="qr-image" src="data:image/png;base64,{{ qr_image }}" alt="QR Code"
+                    class="w-96 h-96 object-contain">
+            </div>
+        </div>
+
+        <div class="flex justify-center space-x-4">
+            <a href="{{ url_for('teacher.course_detail', id=course.id) }}" class="btn-secondary">
+                <i class="fas fa-arrow-left mr-2"></i>Retour au cours
+            </a>
+            <form action="{{ url_for('teacher.end_course', id=course.id) }}" method="POST"
+                onsubmit="return confirm('Voulez-vous vraiment terminer la séance ?');">
+                <button type="submit" class="btn-primary bg-red-600 hover:bg-red-700">
+                    <i class="fas fa-stop mr-2"></i>Terminer la séance
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const courseId = {{ course.id }};
+    let timeLeft = 15;
+    const timerElement = document.getElementById('timer');
+    const qrImage = document.getElementById('qr-image');
+
+    function updateTimer() {
+        timeLeft--;
+        timerElement.textContent = `Prochain code dans: ${timeLeft}s`;
+
+        if (timeLeft <= 0) {
+            refreshQR();
+        }
+    }
+
+    async function refreshQR() {
+        try {
+            const response = await fetch(`/teacher/course/${courseId}/refresh-qr`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                qrImage.src = `data:image/png;base64,${data.qr_image}`;
+                timeLeft = 15;
+                timerElement.textContent = `Prochain code dans: 15s`;
+
+                // Flash effect
+                qrImage.parentElement.classList.add('ring-4', 'ring-green-400');
+                setTimeout(() => {
+                    qrImage.parentElement.classList.remove('ring-4', 'ring-green-400');
+                }, 500);
+            }
+        } catch (error) {
+            console.error('Error refreshing QR:', error);
+        }
+    }
+
+    setInterval(updateTimer, 1000);
+</script>
+{% endblock %}

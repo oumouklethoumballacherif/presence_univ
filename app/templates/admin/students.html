@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Étudiants - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
+        <div class="mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2 rounded-lg">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
+                </div>
+                <div>
+                    <h2 class="text-white font-bold">UIR Présence</h2>
+                    <p class="text-white/60 text-sm">Administration</p>
+                </div>
+            </div>
+        </div>
+        <nav class="space-y-2">
+            <a href="{{ url_for('admin.dashboard') }}" class="sidebar-link"><i class="fas fa-home"></i>Tableau de
+                bord</a>
+            <a href="{{ url_for('admin.departments') }}" class="sidebar-link"><i
+                    class="fas fa-building"></i>Départements</a>
+            <a href="{{ url_for('admin.tracks') }}" class="sidebar-link"><i
+                    class="fas fa-graduation-cap"></i>Filières</a>
+            <a href="{{ url_for('admin.teachers') }}" class="sidebar-link"><i
+                    class="fas fa-chalkboard-teacher"></i>Enseignants</a>
+            <a href="{{ url_for('admin.students') }}" class="sidebar-link active"><i
+                    class="fas fa-user-graduate"></i>Étudiants</a>
+            <a href="{{ url_for('admin.global_statistics') }}" class="sidebar-link"><i
+                    class="fas fa-chart-bar"></i>Statistiques</a>
+        </nav>
+        <div class="absolute bottom-6 left-6 right-6">
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-link text-red-300"><i
+                    class="fas fa-sign-out-alt"></i>Déconnexion</a>
+        </div>
+    </aside>
+
+    <main class="flex-1 ml-64 p-8">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-primary">Étudiants</h1>
+            <p class="text-gray-500">Vue globale des étudiants</p>
+        </div>
+
+        <div class="card p-4 mb-6">
+            <form method="GET" class="flex items-center space-x-4">
+                <div class="flex-1">
+                    <input type="text" name="search" value="{{ search }}" class="input-field"
+                        placeholder="Rechercher...">
+                </div>
+                <select name="track_id" class="input-field w-64">
+                    <option value="">Toutes les filières</option>
+                    {% for track in tracks %}
+                    <option value="{{ track.id }}" {% if selected_track==track.id %}selected{% endif %}>{{ track.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn-primary"><i class="fas fa-search"></i></button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Étudiant</th>
+                            <th>Email</th>
+                            <th>Filière(s)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-user-graduate text-accent"></i>
+                                    </div>
+                                    <div class="font-medium text-gray-800">{{ student.full_name }}</div>
+                                </div>
+                            </td>
+                            <td class="text-gray-600">{{ student.email }}</td>
+                            <td>
+                                {% for track in student.enrolled_tracks %}
+                                <span class="badge badge-primary mr-1">{{ track.code }}</span>
+                                {% else %}
+                                <span class="text-gray-400">Aucune</span>
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center text-gray-500 py-8">
+                                Aucun étudiant trouvé.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

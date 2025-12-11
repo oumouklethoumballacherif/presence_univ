@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}{{ subject.name }} - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
+        <div class="mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2 rounded-lg">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
+                </div>
+                <div>
+                    <h2 class="text-white font-bold">UIR Présence</h2>
+                    <p class="text-white/60 text-sm">Étudiant</p>
+                </div>
+            </div>
+        </div>
+
+        <nav class="space-y-2">
+            <a href="{{ url_for('student.dashboard') }}" class="sidebar-link active">
+                <i class="fas fa-home"></i>Tableau de bord
+            </a>
+            <a href="{{ url_for('student.scan') }}" class="sidebar-link">
+                <i class="fas fa-qrcode"></i>Scanner QR
+            </a>
+        </nav>
+
+        <div class="absolute bottom-6 left-6 right-6">
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-link text-red-300">
+                <i class="fas fa-sign-out-alt"></i>Déconnexion
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 ml-64 p-8">
+        <div class="mb-8">
+            <a href="{{ url_for('student.dashboard') }}" class="text-primary hover:underline mb-2 inline-block">
+                <i class="fas fa-arrow-left mr-2"></i>Retour
+            </a>
+            <div class="flex items-center justify-between">
+                <div>
+                    <span class="badge badge-primary text-lg">{{ subject.code }}</span>
+                    <h1 class="text-3xl font-bold text-primary mt-2">{{ subject.name }}</h1>
+                </div>
+                {% if stats.is_rattrapage %}
+                <span class="badge badge-danger text-lg py-2 px-4">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>Rattrapage
+                </span>
+                {% else %}
+                <span class="badge badge-success text-lg py-2 px-4">
+                    <i class="fas fa-check-circle mr-2"></i>Normal
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="card p-6 text-center">
+                <p class="text-4xl font-bold 
+                    {% if stats.grade >= 14 %}text-green-600
+                    {% elif stats.grade >= 10 %}text-yellow-600
+                    {% else %}text-red-600{% endif %}">
+                    {{ stats.grade }}
+                </p>
+                <p class="text-gray-500">Note /20</p>
+            </div>
+
+            <div class="card p-6">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-gray-500">CM</span>
+                    <span class="font-bold text-primary">{{ stats.present_cm }}/{{ stats.completed_cm }}</span>
+                </div>
+                <div class="w-full h-2 bg-gray-200 rounded-full">
+                    <div class="h-full bg-primary rounded-full"
+                        style="width: {% if stats.completed_cm > 0 %}{{ (stats.present_cm / stats.completed_cm * 100)|int }}{% else %}100{% endif %}%">
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">{{ stats.remaining_cm }} restantes</p>
+            </div>
+
+            <div class="card p-6">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-gray-500">TD</span>
+                    <span class="font-bold text-secondary">{{ stats.present_td }}/{{ stats.completed_td }}</span>
+                </div>
+                <div class="w-full h-2 bg-gray-200 rounded-full">
+                    <div class="h-full bg-secondary rounded-full"
+                        style="width: {% if stats.completed_td > 0 %}{{ (stats.present_td / stats.completed_td * 100)|int }}{% else %}100{% endif %}%">
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">{{ stats.remaining_td }} restantes</p>
+            </div>
+
+            <div class="card p-6">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-gray-500">TP</span>
+                    <span class="font-bold text-accent">{{ stats.present_tp }}/{{ stats.completed_tp }}</span>
+                </div>
+                <div class="w-full h-2 bg-gray-200 rounded-full">
+                    <div class="h-full bg-accent rounded-full"
+                        style="width: {% if stats.completed_tp > 0 %}{{ (stats.present_tp / stats.completed_tp * 100)|int }}{% else %}100{% endif %}%">
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">{{ stats.remaining_tp }} restantes</p>
+            </div>
+        </div>
+
+        <!-- Rattrapage Warning -->
+        {% if stats.is_rattrapage %}
+        <div class="card p-4 mb-6 border-l-4 border-red-500 bg-red-50">
+            <p class="text-red-700 font-semibold">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                Attention: Vous êtes en rattrapage pour cette matière
+            </p>
+            <ul class="text-sm text-red-600 mt-2 ml-6 list-disc">
+                {% if rattrapage_stats.cm_td_rate > 0.25 %}
+                <li>Plus de 25% d'absences en CM/TD ({{ (rattrapage_stats.cm_td_rate * 100)|round|int }}%)</li>
+                {% endif %}
+                {% if rattrapage_stats.tp_absent >= 2 %}
+                <li>{{ rattrapage_stats.tp_absent }} absences en TP (≥2 = rattrapage)</li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Attendance History -->
+        <div class="card">
+            <div class="p-4 border-b">
+                <h3 class="font-semibold text-primary">Historique des séances</h3>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Titre</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in courses_data %}
+                        {% if item.course.status == 'completed' %}
+                        <tr>
+                            <td class="text-gray-600">
+                                {{ item.course.started_at.strftime('%d/%m/%Y %H:%M') if item.course.started_at else '-'
+                                }}
+                            </td>
+                            <td>
+                                <span class="badge 
+                                    {% if item.course.course_type == 'CM' %}badge-primary
+                                    {% elif item.course.course_type == 'TD' %}badge-success
+                                    {% else %}badge-warning{% endif %}">
+                                    {{ item.course.course_type }}
+                                </span>
+                            </td>
+                            <td>{{ item.course.title or '-' }}</td>
+                            <td>
+                                {% if item.attendance and item.attendance.status == 'present' %}
+                                <span class="text-green-600"><i class="fas fa-check-circle mr-1"></i>Présent</span>
+                                {% else %}
+                                <span class="text-red-600"><i class="fas fa-times-circle mr-1"></i>Absent</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center text-gray-500 py-8">
+                                Aucune séance terminée
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

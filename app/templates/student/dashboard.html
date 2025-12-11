@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Tableau de bord Étudiant - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
+        <div class="mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2 rounded-lg">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
+                </div>
+                <div>
+                    <h2 class="text-white font-bold">UIR Présence</h2>
+                    <p class="text-white/60 text-sm">Étudiant</p>
+                </div>
+            </div>
+        </div>
+
+        <nav class="space-y-2">
+            <a href="{{ url_for('student.dashboard') }}" class="sidebar-link active">
+                <i class="fas fa-home"></i>Tableau de bord
+            </a>
+            <a href="{{ url_for('student.scan') }}" class="sidebar-link">
+                <i class="fas fa-qrcode"></i>Scanner QR
+            </a>
+        </nav>
+
+        <div class="absolute bottom-6 left-6 right-6">
+            <div class="p-4 bg-white/10 rounded-lg mb-4">
+                <p class="text-white font-semibold">{{ current_user.full_name }}</p>
+                <p class="text-white/60 text-sm">{{ current_user.email }}</p>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-link text-red-300">
+                <i class="fas fa-sign-out-alt"></i>Déconnexion
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 ml-64 p-8">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-primary">Mes Matières</h1>
+                <p class="text-gray-500">Suivi de présence par semestre</p>
+            </div>
+            <a href="{{ url_for('student.scan') }}" class="btn-primary">
+                <i class="fas fa-qrcode mr-2"></i>Scanner QR Code
+            </a>
+        </div>
+
+        {% for track_data in tracks_data %}
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold text-primary mb-4">
+                <i class="fas fa-graduation-cap mr-2"></i>{{ track_data.track.name }}
+            </h2>
+
+            {% for year_data in track_data.years %}
+            {% for semester_data in year_data.semesters %}
+            {% if semester_data.subjects %}
+            <div class="mb-6">
+                <h3 class="text-lg font-medium text-secondary mb-3">
+                    {{ year_data.year.name }} - {{ semester_data.semester.name }}
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {% for item in semester_data.subjects %}
+                    <a href="{{ url_for('student.subject_detail', id=item.subject.id) }}"
+                        class="card p-5 hover:shadow-lg transition-shadow">
+                        <div class="flex items-start justify-between mb-3">
+                            <div>
+                                <span class="badge badge-primary">{{ item.subject.code }}</span>
+                                <h4 class="font-semibold text-gray-800 mt-2">{{ item.subject.name }}</h4>
+                            </div>
+                            {% if item.is_rattrapage %}
+                            <span class="badge badge-danger">Rattrapage</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="flex items-center justify-between text-sm text-gray-600 mb-3">
+                            <span><i class="fas fa-check-circle text-green-500 mr-1"></i>{{ item.presences }}
+                                présences</span>
+                            <span><i class="fas fa-calendar text-gray-400 mr-1"></i>{{ item.completed_sessions }}
+                                séances</span>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <span class="text-2xl font-bold 
+                                {% if item.grade >= 14 %}text-green-600
+                                {% elif item.grade >= 10 %}text-yellow-600
+                                {% else %}text-red-600{% endif %}">
+                                {{ item.grade }}/20
+                            </span>
+                            <span class="text-primary text-sm">Voir détails <i
+                                    class="fas fa-arrow-right ml-1"></i></span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="card p-12 text-center">
+            <i class="fas fa-book-open text-6xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500">Vous n'êtes inscrit à aucune filière.</p>
+        </div>
+        {% endfor %}
+    </main>
+</div>
+{% endblock %}

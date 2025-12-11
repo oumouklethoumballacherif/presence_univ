@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Assigner Enseignant - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
+        <div class="mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2 rounded-lg">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 ml-64 p-8">
+        <div class="mb-8">
+            <a href="{{ url_for('teacher.track_management') }}" class="text-primary hover:underline mb-2 inline-block">
+                <i class="fas fa-arrow-left mr-2"></i>Retour
+            </a>
+            <h1 class="text-3xl font-bold text-primary">Assigner Enseignant</h1>
+            <p class="text-gray-500">{{ subject.name }}</p>
+        </div>
+
+        <div class="card p-8 max-w-2xl">
+            <form method="POST">
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Enseignant</label>
+                        <select name="teacher_id" required class="input-field">
+                            <option value="">Sélectionner</option>
+                            {% for teacher in teachers %}
+                            <option value="{{ teacher.id }}">{{ teacher.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Types de séances à enseigner</label>
+                        <div class="flex space-x-6">
+                            <label class="flex items-center">
+                                <input type="checkbox" name="teaches_cm" class="rounded text-primary mr-2">
+                                <span>CM</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="teaches_td" class="rounded text-primary mr-2">
+                                <span>TD</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="teaches_tp" class="rounded text-primary mr-2">
+                                <span>TP</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end space-x-4">
+                        <a href="{{ url_for('teacher.track_management') }}" class="btn-secondary">Annuler</a>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save mr-2"></i>Assigner
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+{% endblock %}

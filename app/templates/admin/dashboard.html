@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Administration - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
+        <div class="mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2 rounded-lg">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
+                </div>
+                <div>
+                    <h2 class="text-white font-bold">UIR Présence</h2>
+                    <p class="text-white/60 text-sm">Administration</p>
+                </div>
+            </div>
+        </div>
+
+        <nav class="space-y-2">
+            <a href="{{ url_for('admin.dashboard') }}"
+                class="sidebar-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+                <i class="fas fa-home"></i>
+                Tableau de bord
+            </a>
+            <a href="{{ url_for('admin.departments') }}"
+                class="sidebar-link {% if 'department' in request.endpoint %}active{% endif %}">
+                <i class="fas fa-building"></i>
+                Départements
+            </a>
+            <a href="{{ url_for('admin.tracks') }}"
+                class="sidebar-link {% if 'track' in request.endpoint %}active{% endif %}">
+                <i class="fas fa-graduation-cap"></i>
+                Filières
+            </a>
+            <a href="{{ url_for('admin.teachers') }}"
+                class="sidebar-link {% if 'teacher' in request.endpoint %}active{% endif %}">
+                <i class="fas fa-chalkboard-teacher"></i>
+                Enseignants
+            </a>
+            <a href="{{ url_for('admin.students') }}"
+                class="sidebar-link {% if 'student' in request.endpoint %}active{% endif %}">
+                <i class="fas fa-user-graduate"></i>
+                Étudiants
+            </a>
+            <a href="{{ url_for('admin.global_statistics') }}"
+                class="sidebar-link {% if 'statistic' in request.endpoint %}active{% endif %}">
+                <i class="fas fa-chart-bar"></i>
+                Statistiques
+            </a>
+        </nav>
+
+        <div class="absolute bottom-6 left-6 right-6">
+            <div class="p-4 bg-white/10 rounded-lg mb-4">
+                <p class="text-white/80 text-sm">Connecté en tant que</p>
+                <p class="text-white font-semibold">{{ current_user.full_name }}</p>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-link text-red-300 hover:text-red-200">
+                <i class="fas fa-sign-out-alt"></i>
+                Déconnexion
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 ml-64 p-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-primary">Tableau de bord</h1>
+            <p class="text-gray-500">Vue d'ensemble de l'établissement</p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="card p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Départements</p>
+                        <p class="text-3xl font-bold text-primary">{{ stats.departments }}</p>
+                    </div>
+                    <div class="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center">
+                        <i class="fas fa-building text-2xl text-primary"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Enseignants</p>
+                        <p class="text-3xl font-bold text-secondary">{{ stats.teachers }}</p>
+                    </div>
+                    <div class="w-14 h-14 bg-secondary/10 rounded-full flex items-center justify-center">
+                        <i class="fas fa-chalkboard-teacher text-2xl text-secondary"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Étudiants</p>
+                        <p class="text-3xl font-bold text-accent">{{ stats.students }}</p>
+                    </div>
+                    <div class="w-14 h-14 bg-accent/10 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user-graduate text-2xl text-accent"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Filières</p>
+                        <p class="text-3xl font-bold text-highlight">{{ stats.tracks }}</p>
+                    </div>
+                    <div class="w-14 h-14 bg-highlight/10 rounded-full flex items-center justify-center">
+                        <i class="fas fa-graduation-cap text-2xl text-highlight"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Data -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Recent Teachers -->
+            <div class="card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-primary">Enseignants récents</h3>
+                    <a href="{{ url_for('admin.teachers') }}" class="text-sm text-secondary hover:underline">Voir
+                        tout</a>
+                </div>
+                <div class="space-y-3">
+                    {% for teacher in recent_teachers %}
+                    <div class="flex items-center justify-between p-3 bg-light rounded-lg">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-primary"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium text-gray-800">{{ teacher.full_name }}</p>
+                                <p class="text-sm text-gray-500">{{ teacher.email }}</p>
+                            </div>
+                        </div>
+                        {% if teacher.is_dept_head %}
+                        <span class="badge badge-primary">Chef Dept.</span>
+                        {% elif teacher.is_track_head %}
+                        <span class="badge badge-success">Chef Filière</span>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <p class="text-gray-500 text-center py-4">Aucun enseignant</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Departments Overview -->
+            <div class="card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-primary">Départements</h3>
+                    <a href="{{ url_for('admin.departments') }}"
+                        class="text-sm text-secondary hover:underline">Gérer</a>
+                </div>
+                <div class="space-y-3">
+                    {% for dept in departments %}
+                    <div class="flex items-center justify-between p-3 bg-light rounded-lg">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-secondary/10 rounded-full flex items-center justify-center">
+                                <i class="fas fa-building text-secondary"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium text-gray-800">{{ dept.name }}</p>
+                                <p class="text-sm text-gray-500">{{ dept.tracks|length }} filière(s)</p>
+                            </div>
+                        </div>
+                        {% if dept.head %}
+                        <span class="text-sm text-gray-600">{{ dept.head.full_name }}</span>
+                        {% else %}
+                        <span class="text-sm text-red-500">Sans chef</span>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <p class="text-gray-500 text-center py-4">Aucun département</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

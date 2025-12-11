@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion Filière - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
+        <div class="mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2 rounded-lg">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
+                </div>
+                <div>
+                    <h2 class="text-white font-bold">UIR Présence</h2>
+                    <p class="text-white/60 text-sm">Chef Filière</p>
+                </div>
+            </div>
+        </div>
+        <nav class="space-y-2">
+            <a href="{{ url_for('teacher.dashboard') }}" class="sidebar-link"><i class="fas fa-book"></i>Mes Cours</a>
+            <a href="{{ url_for('teacher.track_management') }}" class="sidebar-link active"><i
+                    class="fas fa-graduation-cap"></i>Gestion Filière</a>
+            <a href="{{ url_for('teacher.track_students') }}" class="sidebar-link"><i
+                    class="fas fa-user-graduate"></i>Étudiants</a>
+            <a href="{{ url_for('teacher.track_statistics') }}" class="sidebar-link"><i
+                    class="fas fa-chart-bar"></i>Statistiques</a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 ml-64 p-8">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-primary">{{ track.name }}</h1>
+                <p class="text-gray-500">Structure pédagogique</p>
+            </div>
+            <a href="{{ url_for('teacher.create_academic_year') }}" class="btn-primary">
+                <i class="fas fa-plus mr-2"></i>Nouvelle année
+            </a>
+        </div>
+
+        <!-- Academic Years Accordion -->
+        <div class="space-y-4">
+            {% for year in academic_years %}
+            <div class="card">
+                <div class="p-4 border-b flex items-center justify-between">
+                    <h3 class="font-semibold text-primary text-lg">{{ year.name }}</h3>
+                    <div class="flex items-center space-x-2">
+                        <a href="{{ url_for('teacher.create_semester', year_id=year.id) }}"
+                            class="btn-secondary text-sm py-1">
+                            <i class="fas fa-plus mr-1"></i>Semestre
+                        </a>
+                        <a href="{{ url_for('teacher.edit_academic_year', id=year.id) }}"
+                            class="p-2 text-secondary hover:bg-secondary/10 rounded-lg">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form action="{{ url_for('teacher.delete_academic_year', id=year.id) }}" method="POST"
+                            class="inline" onsubmit="return confirm('Supprimer cette année?');">
+                            <button type="submit" class="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="p-4">
+                    {% for semester in year.semesters %}
+                    <div class="mb-4 last:mb-0">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-medium text-secondary">{{ semester.name }}</h4>
+                            <a href="{{ url_for('teacher.create_subject', semester_id=semester.id) }}"
+                                class="text-sm text-primary hover:underline">
+                                <i class="fas fa-plus mr-1"></i>Matière
+                            </a>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {% for subject in semester.subjects %}
+                            <div class="bg-light p-3 rounded-lg">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="badge badge-primary">{{ subject.code }}</span>
+                                    <div class="flex space-x-1">
+                                        <a href="{{ url_for('teacher.assign_subject_teacher', id=subject.id) }}"
+                                            class="p-1 text-accent hover:bg-accent/10 rounded" title="Assigner">
+                                            <i class="fas fa-user-plus text-sm"></i>
+                                        </a>
+                                        <a href="{{ url_for('teacher.edit_subject', id=subject.id) }}"
+                                            class="p-1 text-secondary hover:bg-secondary/10 rounded" title="Modifier">
+                                            <i class="fas fa-edit text-sm"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                                <p class="font-medium text-gray-800 text-sm">{{ subject.name }}</p>
+                                <div class="flex space-x-2 mt-2 text-xs text-gray-500">
+                                    <span>CM:{{ subject.total_cm }}</span>
+                                    <span>TD:{{ subject.total_td }}</span>
+                                    <span>TP:{{ subject.total_tp }}</span>
+                                </div>
+                            </div>
+                            {% else %}
+                            <p class="text-gray-500 text-sm col-span-full">Aucune matière</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-gray-500">Aucun semestre</p>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div class="card p-8 text-center">
+                <i class="fas fa-calendar-alt text-6xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">Aucune année académique.</p>
+                <a href="{{ url_for('teacher.create_academic_year') }}" class="text-primary hover:underline">Créer la
+                    première</a>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+</div>
+{% endblock %}

@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Tableau de bord Enseignant - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <!-- Sidebar -->
+    {% include "teacher/sidebar.html" %}
+
+    <!-- Main Content -->
+    <main class="flex-1 ml-64 p-8">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-primary">Mes Cours</h1>
+            <p class="text-gray-500">Matières assignées et gestion des séances</p>
+        </div>
+
+        <!-- Filters -->
+        <div class="card p-4 mb-6">
+            <form method="GET" class="flex items-center space-x-4">
+                <select name="track_id" id="track_select" class="input-field">
+                    <option value="">Toutes les filières</option>
+                    {% for track in tracks %}
+                    <option value="{{ track.id }}" {% if selected_track==track.id %}selected{% endif %}>{{ track.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+
+                <select name="academic_year_id" id="year_select" class="input-field">
+                    <option value="">Toutes les années</option>
+                    {% for year in years %}
+                    <option value="{{ year.id }}" {% if selected_year==year.id %}selected{% endif %}>{{ year.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+
+                <select name="semester_id" id="semester_select" class="input-field">
+                    <option value="">Tous les semestres</option>
+                    {% for semester in semesters %}
+                    <option value="{{ semester.id }}" {% if selected_semester==semester.id %}selected{% endif %}>{{
+                        semester.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn-primary"><i class="fas fa-filter mr-2"></i>Filtrer</button>
+            </form>
+        </div>
+
+        <!-- Subjects Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for item in subjects %}
+            <div class="card p-6 hover:shadow-lg transition-shadow">
+                <div class="flex items-start justify-between mb-4">
+                    <div>
+                        <span class="badge badge-primary">{{ item.subject.code }}</span>
+                        <h3 class="text-lg font-semibold text-primary mt-2">{{ item.subject.name }}</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                        <i class="fas fa-book text-primary text-xl"></i>
+                    </div>
+                </div>
+
+                <div class="space-y-2 text-sm text-gray-600 mb-4">
+                    <p><i class="fas fa-graduation-cap mr-2"></i>{{ item.track.name }}</p>
+                    <p><i class="fas fa-calendar mr-2"></i>{{ item.academic_year.name }} - {{ item.semester.name }}</p>
+                    <div class="flex space-x-3 mt-2">
+                        {% if item.assignment.teaches_cm %}<span class="badge badge-success">CM</span>{% endif %}
+                        {% if item.assignment.teaches_td %}<span class="badge badge-warning">TD</span>{% endif %}
+                        {% if item.assignment.teaches_tp %}<span class="badge badge-primary">TP</span>{% endif %}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 text-center mb-4">
+                    <div class="bg-light p-2 rounded">
+                        <p class="text-xs text-gray-500">CM</p>
+                        <p class="font-bold text-primary">{{ item.subject.total_cm }}</p>
+                    </div>
+                    <div class="bg-light p-2 rounded">
+                        <p class="text-xs text-gray-500">TD</p>
+                        <p class="font-bold text-secondary">{{ item.subject.total_td }}</p>
+                    </div>
+                    <div class="bg-light p-2 rounded">
+                        <p class="text-xs text-gray-500">TP</p>
+                        <p class="font-bold text-accent">{{ item.subject.total_tp }}</p>
+                    </div>
+                </div>
+
+                <div class="flex space-x-2">
+                    <a href="{{ url_for('teacher.create_course', subject_id=item.subject.id) }}"
+                        class="btn-primary flex-1 text-center text-sm py-2">
+                        <i class="fas fa-play mr-1"></i>Nouvelle séance
+                    </a>
+                    <a href="{{ url_for('teacher.subject_attendance', id=item.subject.id) }}"
+                        class="btn-secondary flex-1 text-center text-sm py-2">
+                        <i class="fas fa-chart-line mr-1"></i>Présences
+                    </a>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-span-full text-center py-12">
+                <i class="fas fa-book-open text-6xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">Aucune matière assignée.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const trackSelect = document.getElementById('track_select');
+        const yearSelect = document.getElementById('year_select');
+        const semesterSelect = document.getElementById('semester_select');
+
+        async function fetchOptions(trackId, yearId) {
+            const params = new URLSearchParams();
+            if (trackId) params.append('track_id', trackId);
+            if (yearId) params.append('year_id', yearId);
+            const response = await fetch(`/teacher/api/filter-options?${params.toString()}`);
+            return await response.json();
+        }
+
+        async function onTrackChange() {
+            const trackId = trackSelect.value;
+
+            // Reset downstream filters
+            resetSelect(yearSelect, 'Toutes les années');
+            resetSelect(semesterSelect, 'Tous les semestres');
+
+            if (!trackId) return;
+
+            try {
+                const data = await fetchOptions(trackId, null);
+                // Populate Years
+                populateSelect(yearSelect, data.years, 'Toutes les années');
+            } catch (error) {
+                console.error('Error fetching years:', error);
+            }
+        }
+
+        async function onYearChange() {
+            const trackId = trackSelect.value;
+            const yearId = yearSelect.value;
+
+            // Reset downstream filter
+            resetSelect(semesterSelect, 'Tous les semestres');
+
+            if (!yearId) return;
+
+            try {
+                // We need trackId to filter semesters correctly if API enforces it
+                // API expects year_id. It should infer track or we pass it?
+                // API implementation filters by year_id. If year_id is unique across tracks (it usually is in DB), it's fine.
+                // But safer to pass both if needed. For now let's pass both.
+                const data = await fetchOptions(trackId, yearId);
+                // Populate Semesters
+                populateSelect(semesterSelect, data.semesters, 'Tous les semestres');
+            } catch (error) {
+                console.error('Error fetching semesters:', error);
+            }
+        }
+
+        function populateSelect(selectElement, items, defaultText) {
+            selectElement.innerHTML = `<option value="">${defaultText}</option>`;
+            selectElement.disabled = false;
+
+            items.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.name;
+                selectElement.appendChild(option);
+            });
+        }
+
+        function resetSelect(selectElement, defaultText) {
+            selectElement.innerHTML = `<option value="">${defaultText}</option>`;
+            selectElement.value = '';
+            // Optional: disable empty filters to guide user
+            // selectElement.disabled = true; 
+        }
+
+        trackSelect.addEventListener('change', onTrackChange);
+        yearSelect.addEventListener('change', onYearChange);
+
+        // Initial State Validation
+        // If loaded without track selection, ensure downstream is clear
+        if (!trackSelect.value) {
+            resetSelect(yearSelect, 'Toutes les années');
+            resetSelect(semesterSelect, 'Tous les semestres');
+        } else if (!yearSelect.value) {
+            // Track selected, but no Year
+            resetSelect(semesterSelect, 'Tous les semestres');
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Modifier' if subject else 'Nouvelle' }} Matière - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
+        <div class="mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2 rounded-lg">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 ml-64 p-8">
+        <div class="mb-8">
+            <a href="{{ url_for('teacher.track_management') }}" class="text-primary hover:underline mb-2 inline-block">
+                <i class="fas fa-arrow-left mr-2"></i>Retour
+            </a>
+            <h1 class="text-3xl font-bold text-primary">
+                {{ 'Modifier la matière' if subject else 'Nouvelle matière' }}
+            </h1>
+            <p class="text-gray-500">{{ semester.name }}</p>
+        </div>
+
+        <div class="card p-8 max-w-2xl">
+            <form method="POST">
+                <div class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Code *</label>
+                            <input type="text" name="code" required class="input-field"
+                                value="{{ subject.code if subject else '' }}" placeholder="Ex: PROG101">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nom *</label>
+                            <input type="text" name="name" required class="input-field"
+                                value="{{ subject.name if subject else '' }}" placeholder="Ex: Programmation">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea name="description" rows="2"
+                            class="input-field">{{ subject.description if subject else '' }}</textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Nombre de séances</label>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="text-xs text-gray-500">CM (Cours Magistral)</label>
+                                <input type="number" name="total_cm" class="input-field"
+                                    value="{{ subject.total_cm if subject else 0 }}" min="0">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500">TD (Travaux Dirigés)</label>
+                                <input type="number" name="total_td" class="input-field"
+                                    value="{{ subject.total_td if subject else 0 }}" min="0">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500">TP (Travaux Pratiques)</label>
+                                <input type="number" name="total_tp" class="input-field"
+                                    value="{{ subject.total_tp if subject else 0 }}" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end space-x-4">
+                        <a href="{{ url_for('teacher.track_management') }}" class="btn-secondary">Annuler</a>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save mr-2"></i>{{ 'Enregistrer' if subject else 'Créer' }}
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+{% endblock %}

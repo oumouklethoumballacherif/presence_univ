@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Modifier' if track else 'Nouvelle' }} Filière - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
+        <div class="mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2 rounded-lg">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
+                </div>
+                <div>
+                    <h2 class="text-white font-bold">UIR Présence</h2>
+                    <p class="text-white/60 text-sm">Administration</p>
+                </div>
+            </div>
+        </div>
+        <nav class="space-y-2">
+            <a href="{{ url_for('admin.dashboard') }}" class="sidebar-link"><i class="fas fa-home"></i>Tableau de
+                bord</a>
+            <a href="{{ url_for('admin.departments') }}" class="sidebar-link"><i
+                    class="fas fa-building"></i>Départements</a>
+            <a href="{{ url_for('admin.tracks') }}" class="sidebar-link active"><i
+                    class="fas fa-graduation-cap"></i>Filières</a>
+            <a href="{{ url_for('admin.teachers') }}" class="sidebar-link"><i
+                    class="fas fa-chalkboard-teacher"></i>Enseignants</a>
+            <a href="{{ url_for('admin.students') }}" class="sidebar-link"><i
+                    class="fas fa-user-graduate"></i>Étudiants</a>
+            <a href="{{ url_for('admin.global_statistics') }}" class="sidebar-link"><i
+                    class="fas fa-chart-bar"></i>Statistiques</a>
+        </nav>
+        <div class="absolute bottom-6 left-6 right-6">
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-link text-red-300"><i
+                    class="fas fa-sign-out-alt"></i>Déconnexion</a>
+        </div>
+    </aside>
+
+    <main class="flex-1 ml-64 p-8">
+        <div class="mb-8">
+            <a href="{{ url_for('admin.tracks') }}" class="text-primary hover:underline mb-2 inline-block">
+                <i class="fas fa-arrow-left mr-2"></i>Retour aux filières
+            </a>
+            <h1 class="text-3xl font-bold text-primary">
+                {{ 'Modifier la filière' if track else 'Nouvelle filière' }}
+            </h1>
+        </div>
+
+        <div class="card p-8 max-w-2xl">
+            <form method="POST">
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nom *</label>
+                        <input type="text" name="name" required class="input-field"
+                            value="{{ track.name if track else '' }}" placeholder="Ex: Génie Informatique">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Niveau *</label>
+                        <select name="level" required class="input-field">
+                            <option value="licence" {% if track and track.level=='licence' %}selected{% endif %}>
+                                Licence (L1, L2, L3 - 6 semestres)
+                            </option>
+                            <option value="master" {% if track and track.level=='master' %}selected{% endif %}>
+                                Master (M1, M2 - 4 semestres)
+                            </option>
+                            <option value="doctorat" {% if track and track.level=='doctorat' %}selected{% endif %}>
+                                Doctorat (D1, D2, D3 - 6 semestres)
+                            </option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Département *</label>
+                        <select name="department_id" required class="input-field">
+                            <option value="">Sélectionner</option>
+                            {% for dept in departments %}
+                            <option value="{{ dept.id }}" {% if track and track.department_id==dept.id %}selected{%
+                                endif %}>
+                                {{ dept.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea name="description" rows="3" class="input-field"
+                            placeholder="Description de la filière...">{{ track.description if track else '' }}</textarea>
+                    </div>
+
+                    {% if not track %}
+                    <div class="p-4 bg-blue-50 rounded-lg">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" name="auto_generate" checked class="rounded text-primary mr-3">
+                            <div>
+                                <span class="font-medium text-blue-800">Générer automatiquement la structure
+                                    académique</span>
+                                <p class="text-sm text-blue-600">Crée les années et semestres selon le niveau choisi</p>
+                            </div>
+                        </label>
+                    </div>
+                    {% endif %}
+
+                    <div class="flex justify-end space-x-4">
+                        <a href="{{ url_for('admin.tracks') }}" class="btn-secondary">Annuler</a>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save mr-2"></i>{{ 'Enregistrer' if track else 'Créer' }}
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+{% endblock %}

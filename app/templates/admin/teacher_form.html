@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Modifier' if teacher else 'Nouvel' }} Enseignant - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
+        <div class="mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2 rounded-lg">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
+                </div>
+                <div>
+                    <h2 class="text-white font-bold">UIR Présence</h2>
+                    <p class="text-white/60 text-sm">Administration</p>
+                </div>
+            </div>
+        </div>
+        <nav class="space-y-2">
+            <a href="{{ url_for('admin.dashboard') }}" class="sidebar-link"><i class="fas fa-home"></i>Tableau de
+                bord</a>
+            <a href="{{ url_for('admin.departments') }}" class="sidebar-link"><i
+                    class="fas fa-building"></i>Départements</a>
+            <a href="{{ url_for('admin.teachers') }}" class="sidebar-link active"><i
+                    class="fas fa-chalkboard-teacher"></i>Enseignants</a>
+            <a href="{{ url_for('admin.students') }}" class="sidebar-link"><i
+                    class="fas fa-user-graduate"></i>Étudiants</a>
+        </nav>
+        <div class="absolute bottom-6 left-6 right-6">
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-link text-red-300"><i
+                    class="fas fa-sign-out-alt"></i>Déconnexion</a>
+        </div>
+    </aside>
+
+    <main class="flex-1 ml-64 p-8">
+        <div class="mb-8">
+            <a href="{{ url_for('admin.teachers') }}" class="text-primary hover:underline mb-2 inline-block">
+                <i class="fas fa-arrow-left mr-2"></i>Retour aux enseignants
+            </a>
+            <h1 class="text-3xl font-bold text-primary">
+                {{ 'Modifier l\'enseignant' if teacher else 'Nouvel enseignant' }}
+            </h1>
+        </div>
+
+        <div class="card p-8 max-w-2xl">
+            {% if not teacher %}
+            <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                <p class="text-blue-700 text-sm">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    Un email sera envoyé à l'enseignant pour créer son mot de passe.
+                </p>
+            </div>
+            {% endif %}
+
+            <form method="POST">
+                <div class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Prénom *</label>
+                            <input type="text" name="first_name" required class="input-field"
+                                value="{{ teacher.first_name if teacher else '' }}">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nom *</label>
+                            <input type="text" name="last_name" required class="input-field"
+                                value="{{ teacher.last_name if teacher else '' }}">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email institutionnel *</label>
+                        <input type="email" name="email" required class="input-field"
+                            value="{{ teacher.email if teacher else '' }}" placeholder="prenom.nom@uir.ac.ma">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Matricule</label>
+                        <input type="text" name="matricule" class="input-field"
+                            value="{{ teacher.matricule if teacher else '' }}" placeholder="Ex: ENS001">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Département</label>
+                        <select name="department_id" class="input-field">
+                            <option value="">Sélectionner un département</option>
+                            {% for dept in departments %}
+                            <option value="{{ dept.id }}" {% if teacher and teacher.department_id==dept.id %}selected{%
+                                endif %}>
+                                {{ dept.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="flex justify-end space-x-4">
+                        <a href="{{ url_for('admin.teachers') }}" class="btn-secondary">Annuler</a>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save mr-2"></i>{{ 'Enregistrer' if teacher else 'Créer' }}
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+{% endblock %}

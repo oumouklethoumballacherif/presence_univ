@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Présences - {{ subject.name }} - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    {% include "teacher/sidebar.html" %}
+
+    <main class="flex-1 ml-64 p-8">
+        <div class="mb-8">
+            <a href="{{ url_for('teacher.dashboard') }}" class="text-primary hover:underline mb-2 inline-block">
+                <i class="fas fa-arrow-left mr-2"></i>Retour
+            </a>
+            <h1 class="text-3xl font-bold text-primary">{{ subject.name }}</h1>
+            <p class="text-gray-500">Suivi des présences</p>
+        </div>
+
+        <div class="card">
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Étudiant</th>
+                            <th>Présences</th>
+                            <th>Taux</th>
+                            <th>Note /20</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in students_data %}
+                        <tr>
+                            <td>
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-user-graduate text-accent"></i>
+                                    </div>
+                                    <span class="font-medium">{{ data.student.full_name }}</span>
+                                </div>
+                            </td>
+                            <td>{{ data.present }}/{{ data.total }}</td>
+                            <td>
+                                <div class="flex items-center">
+                                    <div class="w-24 h-2 bg-gray-200 rounded-full mr-2">
+                                        <div class="h-full rounded-full 
+                                            {% if data.rate >= 75 %}bg-green-500
+                                            {% elif data.rate >= 50 %}bg-yellow-500
+                                            {% else %}bg-red-500{% endif %}" style="width: {{ data.rate }}%"></div>
+                                    </div>
+                                    <span class="text-sm">{{ data.rate|round|int }}%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="font-bold 
+                                    {% if data.grade >= 14 %}text-green-600
+                                    {% elif data.grade >= 10 %}text-yellow-600
+                                    {% else %}text-red-600{% endif %}">
+                                    {{ data.grade }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if data.is_rattrapage %}
+                                <span class="badge badge-danger">Rattrapage</span>
+                                {% else %}
+                                <span class="badge badge-success">Normal</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-gray-500 py-8">
+                                Aucun étudiant
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiques Globales - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
+        <div class="mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2 rounded-lg">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
+                </div>
+                <div>
+                    <h2 class="text-white font-bold">UIR Présence</h2>
+                    <p class="text-white/60 text-sm">Administration</p>
+                </div>
+            </div>
+        </div>
+        <nav class="space-y-2">
+            <a href="{{ url_for('admin.dashboard') }}" class="sidebar-link"><i class="fas fa-home"></i>Tableau de
+                bord</a>
+            <a href="{{ url_for('admin.departments') }}" class="sidebar-link"><i
+                    class="fas fa-building"></i>Départements</a>
+            <a href="{{ url_for('admin.tracks') }}" class="sidebar-link"><i
+                    class="fas fa-graduation-cap"></i>Filières</a>
+            <a href="{{ url_for('admin.teachers') }}" class="sidebar-link"><i
+                    class="fas fa-chalkboard-teacher"></i>Enseignants</a>
+            <a href="{{ url_for('admin.students') }}" class="sidebar-link"><i
+                    class="fas fa-user-graduate"></i>Étudiants</a>
+            <a href="{{ url_for('admin.global_statistics') }}" class="sidebar-link active"><i
+                    class="fas fa-chart-bar"></i>Statistiques</a>
+        </nav>
+        <div class="absolute bottom-6 left-6 right-6">
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-link text-red-300"><i
+                    class="fas fa-sign-out-alt"></i>Déconnexion</a>
+        </div>
+    </aside>
+
+    <main class="flex-1 ml-64 p-8">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-primary">Statistiques Globales</h1>
+            <p class="text-gray-500">Vue d'ensemble de l'établissement</p>
+        </div>
+
+        <!-- Overall Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+            <div class="card p-4 text-center">
+                <i class="fas fa-building text-3xl text-primary mb-2"></i>
+                <p class="text-2xl font-bold text-gray-800">{{ overall.departments }}</p>
+                <p class="text-sm text-gray-500">Départements</p>
+            </div>
+            <div class="card p-4 text-center">
+                <i class="fas fa-graduation-cap text-3xl text-secondary mb-2"></i>
+                <p class="text-2xl font-bold text-gray-800">{{ overall.tracks }}</p>
+                <p class="text-sm text-gray-500">Filières</p>
+            </div>
+            <div class="card p-4 text-center">
+                <i class="fas fa-chalkboard-teacher text-3xl text-accent mb-2"></i>
+                <p class="text-2xl font-bold text-gray-800">{{ overall.teachers }}</p>
+                <p class="text-sm text-gray-500">Enseignants</p>
+            </div>
+            <div class="card p-4 text-center">
+                <i class="fas fa-user-graduate text-3xl text-highlight mb-2"></i>
+                <p class="text-2xl font-bold text-gray-800">{{ overall.students }}</p>
+                <p class="text-sm text-gray-500">Étudiants</p>
+            </div>
+            <div class="card p-4 text-center">
+                <i class="fas fa-book text-3xl text-primary mb-2"></i>
+                <p class="text-2xl font-bold text-gray-800">{{ overall.subjects }}</p>
+                <p class="text-sm text-gray-500">Matières</p>
+            </div>
+            <div class="card p-4 text-center">
+                <i class="fas fa-calendar-check text-3xl text-green-500 mb-2"></i>
+                <p class="text-2xl font-bold text-gray-800">{{ overall.courses_completed }}</p>
+                <p class="text-sm text-gray-500">Séances</p>
+            </div>
+        </div>
+
+        <!-- Tracks Statistics -->
+        <div class="card">
+            <div class="p-4 border-b">
+                <h2 class="text-xl font-semibold text-primary">
+                    <i class="fas fa-chart-line mr-2"></i>Statistiques par Filière
+                </h2>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Filière</th>
+                            <th>Département</th>
+                            <th>Étudiants</th>
+                            <th>Enseignants</th>
+                            <th>Matières</th>
+                            <th>Séances</th>
+                            <th>Taux Présence</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in tracks_data %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('admin.tracks') }}"
+                                    class="font-medium text-primary hover:underline">
+                                    {{ data.track.name }}
+                                </a>
+                            </td>
+                            <td class="text-gray-600">{{ data.track.department.name }}</td>
+                            <td>{{ data.students_count }}</td>
+                            <td>{{ data.teachers_count }}</td>
+                            <td>{{ data.subjects_count }}</td>
+                            <td>{{ data.courses_count }}</td>
+                            <td>
+                                <div class="flex items-center">
+                                    <div class="w-16 h-2 bg-gray-200 rounded-full mr-2">
+                                        <div class="h-full rounded-full 
+                                            {% if data.attendance_rate >= 75 %}bg-green-500
+                                            {% elif data.attendance_rate >= 50 %}bg-yellow-500
+                                            {% else %}bg-red-500{% endif %}"
+                                            style="width: {{ data.attendance_rate }}%"></div>
+                                    </div>
+                                    <span class="text-sm font-medium">{{ data.attendance_rate }}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-gray-500 py-8">
+                                Aucune filière
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

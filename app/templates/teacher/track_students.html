@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Étudiants - UIR Présence{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
+        <div class="mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2 rounded-lg">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
+                </div>
+            </div>
+        </div>
+        <nav class="space-y-2">
+            <a href="{{ url_for('teacher.dashboard') }}" class="sidebar-link"><i class="fas fa-book"></i>Mes Cours</a>
+            <a href="{{ url_for('teacher.track_management') }}" class="sidebar-link"><i
+                    class="fas fa-graduation-cap"></i>Gestion Filière</a>
+            <a href="{{ url_for('teacher.track_students') }}" class="sidebar-link active"><i
+                    class="fas fa-user-graduate"></i>Étudiants</a>
+            <a href="{{ url_for('teacher.track_statistics') }}" class="sidebar-link"><i
+                    class="fas fa-chart-bar"></i>Statistiques</a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 ml-64 p-8">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-primary">Étudiants</h1>
+                <p class="text-gray-500">{{ track.name }}</p>
+            </div>
+            <div class="flex space-x-3">
+                <a href="{{ url_for('teacher.import_students') }}" class="btn-secondary">
+                    <i class="fas fa-file-excel mr-2"></i>Import Excel
+                </a>
+                <a href="{{ url_for('teacher.create_student') }}" class="btn-primary">
+                    <i class="fas fa-plus mr-2"></i>Nouvel étudiant
+                </a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Étudiant</th>
+                            <th>Email</th>
+                            <th>Compte</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-user-graduate text-accent"></i>
+                                    </div>
+                                    <span class="font-medium">{{ student.full_name }}</span>
+                                </div>
+                            </td>
+                            <td class="text-gray-600">{{ student.email }}</td>
+                            <td>
+                                {% if student.password_hash %}
+                                <span class="badge badge-success">Actif</span>
+                                {% else %}
+                                <span class="badge badge-warning">En attente</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center text-gray-500 py-8">
+                                Aucun étudiant
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
