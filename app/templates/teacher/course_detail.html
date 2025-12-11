@@ -114,7 +114,7 @@
                                     </td>
                                     <td>
                                         {% if item.attendance and item.attendance.scanned_at %}
-                                        {{ item.attendance.scanned_at.strftime('%H:%M:%S') }}
+                                        {{ item.attendance.scanned_at.strftime('%H:%M') }}
                                         {% else %}
                                         -
                                         {% endif %}

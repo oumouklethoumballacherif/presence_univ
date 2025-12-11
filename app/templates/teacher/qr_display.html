@@ -8,16 +8,44 @@
         <div class="mb-8">
             <h1 class="text-3xl font-bold text-primary mb-2">{{ course.title }}</h1>
             <p class="text-xl text-gray-600">{{ course.subject.name }} - {{ course.course_type }}</p>
-            <div class="mt-4 inline-block bg-blue-100 text-blue-800 px-4 py-2 rounded-full font-mono text-xl"
-                id="timer">
-                Prochain code dans: 15s
+
+            <!-- Compteur simple etTimer -->
+            <div class="mt-6 flex justify-center items-center gap-6">
+                <!-- Compteur présences -->
+                <div class="flex items-center gap-3 bg-white rounded-lg px-6 py-3 shadow-sm border border-gray-200">
+                    <i class="fas fa-users text-primary text-xl"></i>
+                    <div class="text-left">
+                        <div class="text-2xl font-bold text-gray-800">
+                            <span id="presentCount">{{ present_students }}</span>
+                            <span class="text-gray-400">/</span>
+                            <span id="totalCount" class="text-gray-500">{{ total_students }}</span>
+                        </div>
+                        <div class="text-xs text-gray-500 uppercase tracking-wide">Présents</div>
+                    </div>
+                </div>
+
+                <!-- Timer -->
+                <div class="bg-white rounded-lg px-6 py-3 shadow-sm border border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-clock text-primary text-xl"></i>
+                        <div class="text-left">
+                            <div class="text-lg font-mono font-semibold text-gray-800" id="timer">15s</div>
+                            <div class="text-xs text-gray-500 uppercase tracking-wide">Prochain code</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="flex justify-center mb-8">
-            <div class="bg-white p-4 rounded-xl shadow-lg border border-gray-200">
+            <div class="bg-white p-4 rounded-xl shadow-lg border border-gray-200 relative">
                 <img id="qr-image" src="data:image/png;base64,{{ qr_image }}" alt="QR Code"
                     class="w-96 h-96 object-contain">
+                <!-- Indicateur de rafraîchissement -->
+                <div id="refreshIndicator"
+                    class="hidden absolute top-2 right-2 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+                    <i class="fas fa-sync-alt fa-spin mr-1"></i> Rafraîchi !
+                </div>
             </div>
         </div>
 
@@ -40,10 +68,13 @@
     let timeLeft = 15;
     const timerElement = document.getElementById('timer');
     const qrImage = document.getElementById('qr-image');
+    const presentCountElement = document.getElementById('presentCount');
+    const totalCountElement = document.getElementById('totalCount');
+    const refreshIndicator = document.getElementById('refreshIndicator');
 
     function updateTimer() {
         timeLeft--;
-        timerElement.textContent = `Prochain code dans: ${timeLeft}s`;
+        timerElement.textContent = `${timeLeft}s`;
 
         if (timeLeft <= 0) {
             refreshQR();
@@ -61,15 +92,39 @@
 
             if (response.ok) {
                 const data = await response.json();
+
+                // Mettre à jour le QR code
                 qrImage.src = `data:image/png;base64,${data.qr_image}`;
                 timeLeft = 15;
-                timerElement.textContent = `Prochain code dans: 15s`;
+                timerElement.textContent = `15s`;
 
-                // Flash effect
+                // Mettre à jour le compteur
+                const oldCount = parseInt(presentCountElement.textContent);
+                const newCount = data.present_students;
+
+                presentCountElement.textContent = newCount;
+                totalCountElement.textContent = data.total_students;
+
+                // Animation si nouveau scan
+                if (newCount > oldCount) {
+                    presentCountElement.parentElement.classList.add('animate-pulse');
+                    setTimeout(() => {
+                        presentCountElement.parentElement.classList.remove('animate-pulse');
+                    }, 1000);
+
+                    // Son de notification (optionnel)
+                    // new Audio('/static/notification.mp3').play();
+                }
+
+                // Flash effect sur le QR code
                 qrImage.parentElement.classList.add('ring-4', 'ring-green-400');
+
+                // Afficher l'indicateur de rafraîchissement
+                refreshIndicator.classList.remove('hidden');
                 setTimeout(() => {
                     qrImage.parentElement.classList.remove('ring-4', 'ring-green-400');
-                }, 500);
+                    refreshIndicator.classList.add('hidden');
+                }, 1000);
             }
         } catch (error) {
             console.error('Error refreshing QR:', error);
@@ -77,5 +132,54 @@
     }
 
     setInterval(updateTimer, 1000);
+
+    // Rafraîchir le compteur toutes les 3 secondes (indépendamment du QR)
+    setInterval(async () => {
+        try {
+            const response = await fetch(`/teacher/course/${courseId}/refresh-qr`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const oldCount = parseInt(presentCountElement.textContent);
+                const newCount = data.present_students;
+
+                if (newCount !== oldCount) {
+                    presentCountElement.textContent = newCount;
+                    totalCountElement.textContent = data.total_students;
+
+                    // Animation
+                    presentCountElement.parentElement.classList.add('animate-pulse');
+                    setTimeout(() => {
+                        presentCountElement.parentElement.classList.remove('animate-pulse');
+                    }, 1000);
+                }
+            }
+        } catch (error) {
+            console.error('Error updating count:', error);
+        }
+    }, 3000);
 </script>
+
+<style>
+    @keyframes pulse {
+
+        0%,
+        100% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.1);
+        }
+    }
+
+    .animate-pulse {
+        animation: pulse 0.5s ease-in-out 2;
+    }
+</style>
 {% endblock %}

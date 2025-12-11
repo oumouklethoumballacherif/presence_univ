@@ -4,8 +4,12 @@ from datetime import timedelta
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'uir-presence-secret-key-2024'
     
+    # Server configuration for URL generation
+    SERVER_NAME = '127.0.0.1:5000'
+    PREFERRED_URL_SCHEME = 'http'
+    
     # Database
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:@localhost:3306/presences_univ'
+    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:MYSQL123@localhost:3306/presences_univ'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Email Configuration

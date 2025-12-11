@@ -29,7 +29,13 @@ def send_email(subject, recipient, html_body, text_body=None):
 
 def send_password_creation_email(user):
     """Send email with link to create password"""
+    from app.models import db  # Import db here to avoid circular import
+    
     token = user.generate_token()
+    
+    # IMPORTANT: Save the token to database
+    db.session.commit()
+    
     reset_url = url_for('auth.create_password', token=token, _external=True)
     
     html_body = f"""
@@ -67,7 +73,13 @@ def send_password_creation_email(user):
 
 def send_password_reset_email(user):
     """Send password reset email"""
+    from app.models import db  # Import db here to avoid circular import
+    
     token = user.generate_token()
+    
+    # IMPORTANT: Save the token to database
+    db.session.commit()
+    
     reset_url = url_for('auth.reset_password', token=token, _external=True)
     
     html_body = f"""

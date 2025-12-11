@@ -6,7 +6,7 @@ connection = pymysql.connect(
     host='localhost',
     port=3306,
     user='root',
-    password='',
+    password='MYSQL123',
     database='presences_univ'
 )
 

@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from app.models import (db, User, Subject, Course, Attendance, 
+from app.models import (db, User, Subject, Course, Attendance, AttendanceToken,
                         calculate_rattrapage_status, calculate_attendance_grade)
 from app.utils.decorators import student_required
 from app.utils.qr_generator import parse_qr_data
@@ -192,8 +192,13 @@ def record_attendance():
     if course.status != 'active':
         return jsonify({'success': False, 'message': 'Cette séance n\'est pas active'}), 400
     
-    # Verify token
-    if not course.is_qr_valid(token):
+    # Verify token using AttendanceToken table
+    attendance_token = AttendanceToken.query.filter_by(
+        course_id=course_id,
+        token=token
+    ).first()
+    
+    if not attendance_token or not attendance_token.is_valid():
         return jsonify({'success': False, 'message': 'QR code expiré. Veuillez rescanner.'}), 400
     
     # Check if student is enrolled in the track
@@ -221,8 +226,18 @@ def record_attendance():
             'already_recorded': True
         })
     
-    attendance.status = 'present'
     attendance.scanned_at = datetime.utcnow()
+    
+    # Calculate status based on time (Late if > 20 mins)
+    if course.started_at:
+        delta = (attendance.scanned_at - course.started_at).total_seconds()
+        if delta > 1200: # 20 minutes
+            attendance.status = 'late'
+        else:
+            attendance.status = 'present'
+    else:
+        attendance.status = 'present'
+        
     db.session.commit()
     
     return jsonify({

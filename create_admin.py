@@ -7,7 +7,7 @@ app = create_app()
 
 with app.app_context():
     # Check if user already exists
-    existing = User.query.filter_by(email='oumou_admin@gmail.com').first()
+    existing = User.query.filter_by(email='oumaimajabrane23@gmail.com').first()
     if existing:
         print("! User already exists, updating password...")
         existing.password_hash = generate_password_hash('123')
@@ -17,8 +17,8 @@ with app.app_context():
     else:
         # Create new super admin
         admin = User(
-            email='oumou_admin@gmail.com',
-            first_name='Oumou',
+            email='oumaimajabrane23@gmail.com',
+            first_name='Oum',
             last_name='Admin',
             role='admin',
             is_active=True
@@ -28,6 +28,6 @@ with app.app_context():
         db.session.commit()
         print("✓ Super Admin created!")
     
-    print("\n  Email: oumou_admin@gmail.com")
+    print("\n  Email: oumaimajabrane23@gmail.com")
     print("  Password: 123")
     print("  Role: Super Admin")

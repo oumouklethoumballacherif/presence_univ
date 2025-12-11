@@ -2,6 +2,20 @@
 
 {% block title %}Présences - {{ subject.name }} - UIR Présence{% endblock %}
 
+{% block head %}
+<style>
+    #searchInput::placeholder {
+        color: #9CA3AF;
+        font-size: 0.875rem;
+    }
+
+    #searchInput:focus {
+        border-color: var(--primary-color, #163A59);
+        box-shadow: 0 0 0 3px rgba(22, 58, 89, 0.1);
+    }
+</style>
+{% endblock %}
+
 {% block body %}
 <div class="flex min-h-screen">
     {% include "teacher/sidebar.html" %}
@@ -15,11 +29,35 @@
             <p class="text-gray-500">Suivi des présences</p>
         </div>
 
+        <!-- Barre de recherche -->
+        <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+            <div class="flex items-center gap-4">
+                <!-- Champ de recherche -->
+                <div class="flex-1 relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </span>
+                    <input type="text" id="searchInput" placeholder="Rechercher par nom, prénom ou matricule..."
+                        class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                        style="outline: none;">
+                </div>
+                <!-- Compteur -->
+                <div class="flex-shrink-0">
+                    <span
+                        class="inline-flex items-center px-4 py-2.5 rounded-lg bg-primary text-white font-medium whitespace-nowrap">
+                        <i class="fas fa-users mr-2"></i>
+                        <span id="resultCount">{{ students_data|length }}</span> étudiant(s)
+                    </span>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
             <div class="table-container">
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th>Matricule</th>
                             <th>Étudiant</th>
                             <th>Présences</th>
                             <th>Taux</th>
@@ -27,13 +65,21 @@
                             <th>Statut</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="studentTableBody">
                         {% for data in students_data %}
-                        <tr>
+                        <tr class="student-row" data-name="{{ data.student.full_name|lower }}"
+                            data-matricule="{{ data.student.matricule|lower if data.student.matricule else '' }}">
+                            <td>
+                                <span class="text-gray-700 font-mono text-sm">
+                                    {{ data.student.matricule if data.student.matricule else '-' }}
+                                </span>
+                            </td>
                             <td>
                                 <div class="flex items-center space-x-3">
-                                    <div class="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center">
-                                        <i class="fas fa-user-graduate text-accent"></i>
+                                    <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                        <span class="text-primary font-bold text-sm">
+                                            {{ data.student.first_name[0]|upper }}{{ data.student.last_name[0]|upper }}
+                                        </span>
                                     </div>
                                     <span class="font-medium">{{ data.student.full_name }}</span>
                                 </div>
@@ -67,8 +113,8 @@
                             </td>
                         </tr>
                         {% else %}
-                        <tr>
-                            <td colspan="5" class="text-center text-gray-500 py-8">
+                        <tr id="noResultsRow">
+                            <td colspan="6" class="text-center text-gray-500 py-8">
                                 Aucun étudiant
                             </td>
                         </tr>
@@ -79,4 +125,34 @@
         </div>
     </main>
 </div>
+
+<script>
+    // Recherche en temps réel
+    document.getElementById('searchInput').addEventListener('input', function (e) {
+        const searchTerm = e.target.value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.student-row');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const name = row.getAttribute('data-name');
+            const matricule = row.getAttribute('data-matricule');
+
+            if (name.includes(searchTerm) || matricule.includes(searchTerm)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Mettre à jour le compteur
+        document.getElementById('resultCount').textContent = visibleCount;
+
+        // Afficher un message si aucun résultat
+        const noResultsRow = document.getElementById('noResultsRow');
+        if (noResultsRow) {
+            noResultsRow.style.display = visibleCount === 0 && searchTerm ? '' : 'none';
+        }
+    });
+</script>
 {% endblock %}

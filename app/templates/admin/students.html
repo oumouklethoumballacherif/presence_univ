@@ -29,6 +29,46 @@
             </form>
         </div>
 
+        <!-- Barre d'actions flottante sticky -->
+        <div id="floatingActionsBar" class="hidden fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+            <div class="bg-white rounded-full shadow-2xl border border-gray-200 px-6 py-4">
+                <div class="flex items-center space-x-6">
+                    <div class="flex items-center space-x-2 border-r border-gray-300 pr-6">
+                        <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                            <i class="fas fa-check text-white text-sm"></i>
+                        </div>
+                        <span class="font-semibold text-gray-700">
+                            <span id="selectedCount">0</span> sélectionné(s)
+                        </span>
+                    </div>
+
+                    <button onclick="bulkEdit()" class="action-btn" title="Modifier">
+                        <div
+                            class="w-12 h-12 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center transition-all transform hover:scale-110">
+                            <i class="fas fa-edit text-white text-lg"></i>
+                        </div>
+                        <span class="text-xs text-gray-600 mt-1">Modifier</span>
+                    </button>
+
+                    <button onclick="bulkDelete()" class="action-btn" title="Supprimer">
+                        <div
+                            class="w-12 h-12 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-all transform hover:scale-110">
+                            <i class="fas fa-trash text-white text-lg"></i>
+                        </div>
+                        <span class="text-xs text-gray-600 mt-1">Supprimer</span>
+                    </button>
+
+                    <button onclick="clearSelection()" class="action-btn" title="Annuler">
+                        <div
+                            class="w-12 h-12 bg-gray-400 hover:bg-gray-500 rounded-full flex items-center justify-center transition-all transform hover:scale-110">
+                            <i class="fas fa-times text-white text-lg"></i>
+                        </div>
+                        <span class="text-xs text-gray-600 mt-1">Annuler</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div class="flex justify-end mb-6 space-x-4">
             <a href="{{ url_for('admin.import_students') }}" class="btn-secondary">
                 <i class="fas fa-file-excel mr-2"></i>Importer (Excel)
@@ -43,24 +83,37 @@
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th class="w-12">
+                                <input type="checkbox" id="selectAll"
+                                    class="w-4 h-4 text-primary border-gray-400 rounded focus:ring-primary cursor-pointer checkbox-gray"
+                                    onchange="toggleSelectAll(this)">
+                            </th>
                             <th>Matricule</th>
                             <th>Étudiant</th>
                             <th>Email</th>
                             <th>Filière(s)</th>
                             <th>Année</th>
-                            <th class="text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for student in students %}
-                        <tr>
+                        <tr class="student-row hover:bg-gray-50 transition-colors" data-student-id="{{ student.id }}">
+                            <td>
+                                <input type="checkbox"
+                                    class="student-checkbox w-4 h-4 text-primary border-gray-400 rounded focus:ring-primary cursor-pointer checkbox-gray"
+                                    value="{{ student.id }}" onchange="updateSelection()">
+                            </td>
                             <td class="font-mono text-sm text-gray-600">{{ student.matricule or '-' }}</td>
                             <td>
                                 <div class="flex items-center space-x-3">
-                                    <div class="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center">
-                                        <i class="fas fa-user-graduate text-accent"></i>
+                                    <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                        <span class="text-primary font-bold text-sm">
+                                            {{ student.first_name[0]|upper }}{{ student.last_name[0]|upper }}
+                                        </span>
                                     </div>
-                                    <div class="font-medium text-gray-800">{{ student.full_name }}</div>
+                                    <div>
+                                        <div class="font-medium text-gray-800">{{ student.full_name }}</div>
+                                    </div>
                                 </div>
                             </td>
                             <td class="text-gray-600">{{ student.email }}</td>
@@ -82,23 +135,10 @@
                                 {% endfor %}
                                 {% endif %}
                             </td>
-                            <td class="text-right space-x-2">
-                                <a href="{{ url_for('admin.edit_student', id=student.id) }}"
-                                    class="text-blue-500 hover:text-blue-700" title="Modifier">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <form action="{{ url_for('admin.delete_student', id=student.id) }}" method="POST"
-                                    class="inline-block"
-                                    onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet étudiant ?');">
-                                    <button type="submit" class="text-red-500 hover:text-red-700" title="Supprimer">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="3" class="text-center text-gray-500 py-8">
+                            <td colspan="6" class="text-center text-gray-500 py-8">
                                 Aucun étudiant trouvé.
                             </td>
                         </tr>
@@ -109,4 +149,183 @@
         </div>
     </main>
 </div>
+
+<script>
+    // Sélection/Désélection de tous les étudiants
+    function toggleSelectAll(checkbox) {
+        const checkboxes = document.querySelectorAll('.student-checkbox');
+        checkboxes.forEach(cb => cb.checked = checkbox.checked);
+        updateSelection();
+    }
+
+    // Mise à jour de la barre d'actions
+    function updateSelection() {
+        const checkboxes = document.querySelectorAll('.student-checkbox:checked');
+        const count = checkboxes.length;
+        const floatingBar = document.getElementById('floatingActionsBar');
+        const selectedCount = document.getElementById('selectedCount');
+        const selectAll = document.getElementById('selectAll');
+
+        selectedCount.textContent = count;
+
+        // Afficher/masquer la barre flottante avec animation
+        if (count > 0) {
+            floatingBar.classList.remove('hidden');
+            setTimeout(() => {
+                floatingBar.classList.add('animate-bounce-in');
+            }, 10);
+        } else {
+            floatingBar.classList.add('hidden');
+            floatingBar.classList.remove('animate-bounce-in');
+        }
+
+        // Mettre à jour l'état de "Tout sélectionner"
+        const totalCheckboxes = document.querySelectorAll('.student-checkbox').length;
+        selectAll.checked = count === totalCheckboxes && count > 0;
+        selectAll.indeterminate = count > 0 && count < totalCheckboxes;
+    }
+
+    // Annuler la sélection
+    function clearSelection() {
+        const checkboxes = document.querySelectorAll('.student-checkbox');
+        checkboxes.forEach(cb => cb.checked = false);
+        document.getElementById('selectAll').checked = false;
+        updateSelection();
+    }
+
+    // Modification groupée
+    function bulkEdit() {
+        const checkboxes = document.querySelectorAll('.student-checkbox:checked');
+        const studentIds = Array.from(checkboxes).map(cb => cb.value);
+
+        if (studentIds.length === 0) {
+            alert('Aucun étudiant sélectionné');
+            return;
+        }
+
+        if (studentIds.length === 1) {
+            // Si un seul étudiant, rediriger vers la page d'édition
+            window.location.href = `/admin/students/${studentIds[0]}/edit`;
+        } else {
+            // Pour plusieurs étudiants, afficher un message
+            alert(`Modification groupée de ${studentIds.length} étudiants à implémenter`);
+            // TODO: Implémenter la modification groupée
+        }
+    }
+
+    // Suppression groupée
+    function bulkDelete() {
+        const checkboxes = document.querySelectorAll('.student-checkbox:checked');
+        const studentIds = Array.from(checkboxes).map(cb => cb.value);
+
+        if (studentIds.length === 0) {
+            alert('Aucun étudiant sélectionné');
+            return;
+        }
+
+        const confirmMessage = `⚠️ Êtes-vous sûr de vouloir supprimer ${studentIds.length} étudiant(s) ?\n\nCette action est irréversible.`;
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        // Créer un formulaire pour chaque étudiant
+        let deletedCount = 0;
+        studentIds.forEach((id, index) => {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/admin/students/${id}/delete`;
+
+            setTimeout(() => {
+                document.body.appendChild(form);
+                form.submit();
+                deletedCount++;
+
+                // Recharger la page après la dernière suppression
+                if (deletedCount === studentIds.length) {
+                    setTimeout(() => window.location.reload(), 500);
+                }
+            }, index * 100);
+        });
+    }
+
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', function () {
+        updateSelection();
+    });
+</script>
+
+<style>
+    .action-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        border: none;
+        background: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-2px);
+    }
+
+    /* Checkboxes grisées avant sélection */
+    .checkbox-gray {
+        background-color: #f3f4f6;
+        border-color: #d1d5db !important;
+        opacity: 0.7;
+        transition: all 0.2s ease;
+    }
+
+    .checkbox-gray:hover {
+        opacity: 1;
+        border-color: #9ca3af !important;
+    }
+
+    .checkbox-gray:checked {
+        background-color: var(--primary-color, #163A59) !important;
+        border-color: var(--primary-color, #163A59) !important;
+        opacity: 1;
+    }
+
+    input[type="checkbox"]:indeterminate {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10h8'/%3e%3c/svg%3e");
+        background-color: var(--primary-color, #163A59) !important;
+        border-color: var(--primary-color, #163A59) !important;
+        opacity: 1 !important;
+    }
+
+    @keyframes bounceIn {
+        0% {
+            opacity: 0;
+            transform: translate(-50%, 100px);
+        }
+
+        60% {
+            opacity: 1;
+            transform: translate(-50%, -10px);
+        }
+
+        80% {
+            transform: translate(-50%, 5px);
+        }
+
+        100% {
+            transform: translate(-50%, 0);
+        }
+    }
+
+    .animate-bounce-in {
+        animation: bounceIn 0.5s ease-out;
+    }
+
+    #floatingActionsBar {
+        transition: opacity 0.3s ease-in-out;
+    }
+
+    /* Style pour le hover sur les lignes */
+    .student-row:hover {
+        background-color: #f9fafb;
+    }
+</style>
 {% endblock %}

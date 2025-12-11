@@ -378,7 +378,19 @@ def qr_display(id):
     
     qr_image = generate_attendance_qr(course.id, latest_token.token)
     
-    return render_template('teacher/qr_display.html', course=course, qr_image=qr_image)
+    # Count students: total and present
+    track = course.subject.semester.academic_year.track
+    total_students = len(track.students)
+    present_students = Attendance.query.filter_by(
+        course_id=course.id,
+        status='present'
+    ).count()
+    
+    return render_template('teacher/qr_display.html', 
+                         course=course, 
+                         qr_image=qr_image,
+                         total_students=total_students,
+                         present_students=present_students)
 
 
 @teacher_bp.route('/course/<int:id>/refresh-qr', methods=['POST'])
@@ -409,10 +421,20 @@ def refresh_qr(id):
     
     qr_image = generate_attendance_qr(course.id, new_token.token)
     
+    # Count students: total and present
+    track = course.subject.semester.academic_year.track
+    total_students = len(track.students)
+    present_students = Attendance.query.filter_by(
+        course_id=course.id,
+        status='present'
+    ).count()
+    
     return jsonify({
         'qr_image': qr_image,
         'token': new_token.token,
-        'expires_at': new_token.expires_at.isoformat()
+        'expires_at': new_token.expires_at.isoformat(),
+        'present_students': present_students,
+        'total_students': total_students
     })
 
 

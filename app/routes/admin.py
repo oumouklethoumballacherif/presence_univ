@@ -1025,17 +1025,110 @@ def global_statistics():
         
         tracks_data.append(track_stats)
     
-    # Overall stats
+    departments_data = []
+    # (Existing track logic...)
+    
+    # Subject stats
+    subjects_data = []
+    subjects = Subject.query.all()
+    
+    for subject in subjects:
+        track = subject.semester.academic_year.track
+        courses = Course.query.filter_by(subject_id=subject.id, status='completed').all()
+        
+        total_present = 0
+        total_attendance = 0
+        
+        for course in courses:
+            for att in course.attendances:
+                total_attendance += 1
+                if att.status == 'present':
+                    total_present += 1
+        
+        attendance_rate = 0
+        if total_attendance > 0:
+            attendance_rate = round(total_present / total_attendance * 100, 1)
+            
+        subjects_data.append({
+            'subject': subject,
+            'track': track,
+            'department': track.department,
+            'students_count': len(track.students),
+            'courses_count': len(courses),
+            'attendance_rate': attendance_rate
+        })
+    
+    # overall stats (kept as is)
     overall = {
         'departments': Department.query.count(),
         'tracks': Track.query.count(),
         'teachers': User.query.filter_by(role='teacher').count(),
         'students': User.query.filter_by(role='student').count(),
-        'subjects': Subject.query.count(),
+        'subjects': len(subjects),
         'courses_completed': Course.query.filter_by(status='completed').count()
     }
     
-    return render_template('admin/statistics.html', tracks_data=tracks_data, overall=overall)
+    return render_template('admin/statistics.html', 
+                         tracks_data=tracks_data, 
+                         subjects_data=subjects_data,
+                         overall=overall)
+
+@admin_bp.route('/statistics/subject/<int:id>')
+@login_required
+@admin_required
+def subject_statistics(id):
+    """Detailed statistics for a specific subject"""
+    subject = Subject.query.get_or_404(id)
+    track = subject.semester.academic_year.track
+    
+    # Get all courses (sessions) for this subject
+    courses = Course.query.filter_by(subject_id=subject.id, status='completed').order_by(Course.started_at).all()
+    total_sessions = len(courses)
+    
+    students_data = []
+    for student in track.students:
+        present = 0
+        late = 0
+        absent = 0
+        
+        for course in courses:
+            attendance = Attendance.query.filter_by(course_id=course.id, student_id=student.id).first()
+            if attendance:
+                if attendance.status == 'present':
+                    present += 1
+                elif attendance.status == 'late':
+                    late += 1
+                else:
+                    absent += 1
+            else:
+                absent += 1 # If no record, assume absent? Or handle as not marked. usually assume absent if session completed.
+        
+        if total_sessions > 0:
+            # STRICT presence only: Present = 1, Late = 0 (like absent)
+            # User requested to NOT include lates in the grade.
+            attendance_rate = round(present / total_sessions * 100, 1)
+            grade = round(present / total_sessions * 20, 2)
+        else:
+            attendance_rate = 100.0 
+            grade = 20.0
+
+        students_data.append({
+            'student': student,
+            'present': present,
+            'late': late,
+            'absent': absent,
+            'rate': attendance_rate,
+            'grade': grade
+        })
+    
+    # Sort by lowest attendance rate first (to highlight issues)
+    students_data.sort(key=lambda x: x['rate'])
+    
+    return render_template('admin/subject_statistics.html', 
+                         subject=subject, 
+                         total_sessions=total_sessions,
+                         students_data=students_data)
+
 # ==================== STUDENT MANAGEMENT ====================
 
 @admin_bp.route('/students/create', methods=['GET', 'POST'])

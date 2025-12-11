@@ -104,6 +104,67 @@
                 </table>
             </div>
         </div>
+
+
+        <!-- Subjects Statistics -->
+        <div class="card mt-8">
+            <div class="p-4 border-b">
+                <h2 class="text-xl font-semibold text-primary">
+                    <i class="fas fa-book mr-2"></i>Statistiques par Matière
+                </h2>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Matière</th>
+                            <th>Département</th>
+                            <th>Filière</th>
+                            <th>Étudiants</th>
+                            <th>Séances</th>
+                            <th>Taux Présence</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in subjects_data %}
+                        <tr>
+                            <td class="font-medium text-gray-800">{{ data.subject.name }}</td>
+                            <td class="text-gray-600">{{ data.department.name }}</td>
+                            <td>
+                                <span class="badge badge-secondary">{{ data.track.name }}</span>
+                            </td>
+                            <td>{{ data.students_count }}</td>
+                            <td>{{ data.courses_count }}</td>
+                            <td>
+                                <div class="flex items-center">
+                                    <div class="w-16 h-2 bg-gray-200 rounded-full mr-2">
+                                        <div class="h-full rounded-full 
+                                    {% if data.attendance_rate >= 75 %}bg-green-500
+                                    {% elif data.attendance_rate >= 50 %}bg-yellow-500
+                                    {% else %}bg-red-500{% endif %}" style="width: {{ data.attendance_rate }}%"></div>
+                                    </div>
+                                    <span class="text-sm font-medium">{{ data.attendance_rate }}%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('admin.subject_statistics', id=data.subject.id) }}"
+                                    class="btn-sm btn-secondary text-xs">
+                                    <i class="fas fa-chart-bar mr-1"></i>Détails
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-gray-500 py-8">
+                                Aucune matière trouvée
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </main>
 </div>
 {% endblock %}
