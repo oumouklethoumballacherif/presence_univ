@@ -89,6 +89,7 @@ def get_filter_options():
     """API to get filter options based on selection"""
     track_id = request.args.get('track_id', type=int)
     year_id = request.args.get('year_id', type=int)
+    semester_id = request.args.get('semester_id', type=int)
     
     # Get all assignments for security check
     assignments = TeacherSubjectAssignment.query.filter_by(teacher_id=current_user.id).all()
