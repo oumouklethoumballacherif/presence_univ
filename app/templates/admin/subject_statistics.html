@@ -29,24 +29,7 @@
 
         <!-- Global Stats Card -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div class="card p-4 bg-green-50 border border-green-200">
-                <div class="text-green-800 font-semibold">Présences Totales</div>
-                <div class="text-2xl font-bold text-green-600">
-                    {{ students_data|sum(attribute='present') }}
-                </div>
-            </div>
-            <div class="card p-4 bg-yellow-50 border border-yellow-200">
-                <div class="text-yellow-800 font-semibold">Retards Totaux</div>
-                <div class="text-2xl font-bold text-yellow-600">
-                    {{ students_data|sum(attribute='late') }}
-                </div>
-            </div>
-            <div class="card p-4 bg-red-50 border border-red-200">
-                <div class="text-red-800 font-semibold">Absences Totales</div>
-                <div class="text-2xl font-bold text-red-600">
-                    {{ students_data|sum(attribute='absent') }}
-                </div>
-            </div>
+            <!-- Removed Presence/Late/Absent cards as requested -->
             <div class="card p-4 bg-blue-50 border border-blue-200">
                 <div class="text-blue-800 font-semibold">Étudiants Inscrits</div>
                 <div class="text-2xl font-bold text-blue-600">
@@ -72,10 +55,12 @@
                             <th>Matricule</th>
                             <th>Étudiant</th>
                             <th class="text-center">Présences</th>
+                            <th>Statut</th>
                             <th class="text-center">Retards</th>
                             <th class="text-center">Absences</th>
                             <th class="text-center">Note /20</th>
                             <th class="w-1/4">Taux de Présence</th>
+                            <th>Statut</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -88,6 +73,13 @@
                             </td>
                             <td class="text-center">
                                 <span class="badge bg-green-100 text-green-800">{{ data.present }}</span>
+                            </td>
+                            <td>
+                                {% if data.is_rattrapage %}
+                                <span class="badge badge-danger">Rattrapage</span>
+                                {% else %}
+                                <span class="badge badge-success">Normal</span>
+                                {% endif %}
                             </td>
                             <td class="text-center">
                                 <span class="badge bg-yellow-100 text-yellow-800">{{ data.late }}</span>

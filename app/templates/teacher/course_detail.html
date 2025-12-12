@@ -47,8 +47,10 @@
                             <p class="font-medium">
                                 {% if course.started_at %}
                                 {{ course.started_at.strftime('%d/%m/%Y') }}
+                                {% elif course.scheduled_date %}
+                                {{ course.scheduled_date.strftime('%d/%m/%Y') }}
                                 {% else %}
-                                {{ course.created_at.strftime('%d/%m/%Y') }} (Créé)
+                                {{ course.created_at.strftime('%d/%m/%Y') }}
                                 {% endif %}
                             </p>
                         </div>
@@ -77,9 +79,28 @@
             <!-- Right: Attendance List -->
             <div class="lg:col-span-2">
                 <div class="card overflow-hidden">
-                    <div class="p-4 border-b flex justify-between items-center">
-                        <h3 class="text-lg font-semibold text-primary">Présences</h3>
-                        <span class="text-sm text-gray-500">{{ attendance_data|length }} étudiants</span>
+                    <div class="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div class="flex items-center gap-3">
+                            <h3 class="text-lg font-semibold text-primary">Présences</h3>
+                            <span class="text-sm bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{{
+                                attendance_data|length }} étudiants</span>
+                        </div>
+                        <div class="flex items-center gap-3 w-full md:w-auto">
+                            <!-- Search -->
+                            <div class="relative flex-1 md:w-64">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" id="searchInput" placeholder="Rechercher..."
+                                    class="w-full pl-9 pr-4 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-primary focus:border-primary">
+                            </div>
+                            <!-- Filter Link/Button -->
+                            <button id="lateFilterBtn" onclick="toggleLateFilter()"
+                                class="px-3 py-1.5 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-md text-sm font-medium hover:bg-yellow-100 transition-colors flex items-center gap-2">
+                                <i class="fas fa-history"></i>
+                                Retards ({{ late_count }})
+                            </button>
+                        </div>
                     </div>
                     <div class="table-container">
                         <table class="data-table">
@@ -88,28 +109,46 @@
                                     <th>Étudiant</th>
                                     <th>Matricule</th>
                                     <th>Statut</th>
+                                    <th>Retard</th>
                                     <th>Heure scan</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for item in attendance_data %}
-                                <tr>
+                                <tr class="hover:bg-gray-50 student-row" data-name="{{ item.student.full_name|lower }}"
+                                    data-matricule="{{ item.student.matricule|lower }}"
+                                    data-status="{{ item.attendance.status if item.attendance else 'none' }}">
                                     <td>
                                         <div class="font-medium">{{ item.student.full_name }}</div>
                                         <div class="text-xs text-gray-500">{{ item.student.email }}</div>
                                     </td>
                                     <td>{{ item.student.matricule }}</td>
                                     <td>
-                                        {% if item.attendance %}
-                                        {% if item.attendance.status == 'present' %}
-                                        <span class="badge bg-green-100 text-green-800">Présent</span>
-                                        {% elif item.attendance.status == 'late' %}
-                                        <span class="badge bg-yellow-100 text-yellow-800">Retard</span>
+                                        {% if course.status == 'pending' %}
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                            En attente
+                                        </span>
                                         {% else %}
-                                        <span class="badge bg-red-100 text-red-800">Absent</span>
+                                        <select
+                                            onchange="updateAttendance({{ course.id }}, {{ item.student.id }}, this)"
+                                            class="text-sm rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-1 pl-2 pr-8
+                                            {% if item.attendance and item.attendance.status == 'present' %}bg-green-50 text-green-800 border-green-200
+                                            {% elif item.attendance and item.attendance.status == 'late' %}bg-yellow-50 text-yellow-800 border-yellow-200
+                                            {% elif item.attendance and item.attendance.status == 'absent' %}bg-red-50 text-red-800 border-red-200
+                                            {% else %}bg-gray-50 text-gray-800{% endif %}">
+                                            <option value="present" {% if item.attendance and
+                                                item.attendance.status=='present' %}selected{% endif %}>Présent</option>
+                                            <option value="absent" {% if not item.attendance or
+                                                item.attendance.status=='absent' %}selected{% endif %}>Absent</option>
+                                        </select>
                                         {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.delay is defined and item.delay is not none %}
+                                        <span class="text-yellow-700 font-mono font-bold">{{ item.delay }} min</span>
                                         {% else %}
-                                        <span class="text-gray-400">Non marqué</span>
+                                        <span class="text-gray-300">-</span>
                                         {% endif %}
                                     </td>
                                     <td>
@@ -135,4 +174,100 @@
         </div>
     </main>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let showLateOnly = false;
+
+    // Initialize search listener
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('keyup', applyFilters);
+        }
+    });
+
+    function toggleLateFilter() {
+        showLateOnly = !showLateOnly;
+        const btn = document.getElementById('lateFilterBtn');
+        if (showLateOnly) {
+            btn.classList.remove('bg-yellow-50', 'border-yellow-200');
+            btn.classList.add('bg-yellow-200', 'border-yellow-400', 'ring-2', 'ring-yellow-400', 'ring-opacity-50');
+        } else {
+            btn.classList.add('bg-yellow-50', 'border-yellow-200');
+            btn.classList.remove('bg-yellow-200', 'border-yellow-400', 'ring-2', 'ring-yellow-400', 'ring-opacity-50');
+        }
+        applyFilters();
+    }
+
+    function applyFilters() {
+        const searchInput = document.getElementById('searchInput');
+        const searchText = searchInput ? searchInput.value.toLowerCase() : '';
+        const rows = document.querySelectorAll('.student-row');
+
+        rows.forEach(row => {
+            const name = row.dataset.name || '';
+            const matricule = row.dataset.matricule || '';
+            const status = row.dataset.status || 'none';
+
+            const matchesSearch = name.includes(searchText) || matricule.includes(searchText);
+            const matchesLate = showLateOnly ? (status === 'late') : true;
+
+            if (matchesSearch && matchesLate) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    function updateAttendance(courseId, studentId, selectElement) {
+        const newStatus = selectElement.value;
+        const originalValue = selectElement.getAttribute('data-original') || newStatus;
+
+        // Disable during update
+        selectElement.disabled = true;
+
+        const formData = new FormData();
+        formData.append('status', newStatus);
+
+        fetch(`/teacher/course/${courseId}/attendance/${studentId}/update`, {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                selectElement.disabled = false;
+                if (data.success) {
+                    // Update select styling based on status
+                    selectElement.className = selectElement.className.replace(/bg-\w+-50 text-\w+-800 border-\w+-200/g, '');
+                    selectElement.classList.remove('bg-gray-50', 'text-gray-800');
+
+                    if (newStatus === 'present') {
+                        selectElement.classList.add('bg-green-50', 'text-green-800', 'border-green-200');
+                    } else if (newStatus === 'late') {
+                        selectElement.classList.add('bg-yellow-50', 'text-yellow-800', 'border-yellow-200');
+                    } else if (newStatus === 'absent') {
+                        selectElement.classList.add('bg-red-50', 'text-red-800', 'border-red-200');
+                    }
+
+                    const row = selectElement.closest('tr');
+                    if (row) {
+                        row.dataset.status = newStatus;
+                        applyFilters();
+                    }
+                } else {
+                    alert('Erreur: ' + data.message);
+                    selectElement.value = originalValue; // Revert
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                selectElement.disabled = false;
+                alert('Erreur de connexion');
+                selectElement.value = originalValue;
+            });
+    }
+</script>
 {% endblock %}

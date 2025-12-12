@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
-from app.models import db, User
+from app.models import db, User, Course
+from datetime import datetime
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -61,6 +62,22 @@ def login():
 @auth_bp.route('/logout')
 @login_required
 def logout():
+    # Auto-complete active courses for teacher
+    if current_user.role == 'teacher':
+        active_courses = Course.query.filter_by(
+            teacher_id=current_user.id,
+            status='active'
+        ).all()
+        
+        for course in active_courses:
+            course.status = 'completed'
+            course.ended_at = datetime.utcnow()
+        
+        if active_courses:
+            db.session.commit()
+            # Optional: flash message? User asked for silent behavior or just "it must be broken/ended".
+            # flash(f'{len(active_courses)} cours actifs ont été terminés.', 'info')
+
     logout_user()
     flash('Vous avez été déconnecté.', 'info')
     return redirect(url_for('auth.login'))

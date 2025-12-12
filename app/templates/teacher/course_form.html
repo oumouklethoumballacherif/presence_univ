@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Nouveau Cours - UIR Présence{% endblock %}
+{% block title %}{% if course %}Modifier Séance{% else %}Nouvelle Séance{% endif %} - UIR Présence{% endblock %}
 
 {% block body %}
 <div class="flex min-h-screen">
@@ -8,10 +8,11 @@
 
     <main class="flex-1 ml-64 p-8">
         <div class="mb-8">
-            <a href="{{ url_for('teacher.dashboard') }}" class="text-primary hover:underline mb-2 inline-block">
+            <a href="{{ url_for('teacher.courses') }}" class="text-primary hover:underline mb-2 inline-block">
                 <i class="fas fa-arrow-left mr-2"></i>Retour
             </a>
-            <h1 class="text-3xl font-bold text-primary">Nouvelle Séance</h1>
+            <h1 class="text-3xl font-bold text-primary">{% if course %}Modifier Séance{% else %}Nouvelle Séance{% endif
+                %}</h1>
             <p class="text-gray-500">{{ subject.name }}</p>
         </div>
 
@@ -23,20 +24,23 @@
                         <select name="course_type" required class="input-field">
                             <option value="">Sélectionner...</option>
                             {% if assignment.teaches_cm %}
-                            <option value="CM">Cours Magistral (CM)</option>
+                            <option value="CM" {% if course and course.course_type=='CM' %}selected{% endif %}>Cours
+                                Magistral (CM)</option>
                             {% endif %}
                             {% if assignment.teaches_td %}
-                            <option value="TD">Travaux Dirigés (TD)</option>
+                            <option value="TD" {% if course and course.course_type=='TD' %}selected{% endif %}>Travaux
+                                Dirigés (TD)</option>
                             {% endif %}
                             {% if assignment.teaches_tp %}
-                            <option value="TP">Travaux Pratiques (TP)</option>
+                            <option value="TP" {% if course and course.course_type=='TP' %}selected{% endif %}>Travaux
+                                Pratiques (TP)</option>
                             {% endif %}
                         </select>
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Titre (Optionnel)</label>
-                        <input type="text" name="title" class="input-field"
+                        <input type="text" name="title" class="input-field" value="{{ course.title if course else '' }}"
                             placeholder="Ex: Introduction aux Algorithmes">
                         <p class="text-xs text-gray-500 mt-1">Si vide, le format sera "Matière - Type"</p>
                     </div>
@@ -44,13 +48,14 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
                         <textarea name="description" rows="3" class="input-field"
-                            placeholder="Détails sur le contenu de la séance..."></textarea>
+                            placeholder="Détails sur le contenu de la séance...">{{ course.description if course else '' }}</textarea>
                     </div>
 
                     <div class="flex justify-end space-x-4">
-                        <a href="{{ url_for('teacher.dashboard') }}" class="btn-secondary">Annuler</a>
+                        <a href="{{ url_for('teacher.courses') }}" class="btn-secondary">Annuler</a>
                         <button type="submit" class="btn-primary">
-                            <i class="fas fa-save mr-2"></i>Créer la séance
+                            <i class="fas fa-save mr-2"></i>{% if course %}Enregistrer{% else %}Créer la séance{% endif
+                            %}
                         </button>
                     </div>
                 </div>

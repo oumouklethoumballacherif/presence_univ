@@ -41,6 +41,10 @@
         <div class="p-4 bg-white/10 rounded-lg mb-4">
             <p class="text-white/60 text-xs mb-1">Connecté en tant que</p>
             <p class="text-white font-semibold">{{ current_user.full_name }}</p>
+            {% if current_user.matricule %}
+            <p class="text-white/60 text-xs mt-1">{{ current_user.matricule }}</p>
+            {% endif %}
+            <p class="text-white/60 text-xs mt-1">{{ current_user.email }}</p>
         </div>
         <a href="{{ url_for('auth.logout') }}" class="sidebar-link text-red-300 hover:text-red-200">
             <i class="fas fa-sign-out-alt"></i>Déconnexion

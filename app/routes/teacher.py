@@ -294,14 +294,25 @@ def course_detail(id):
             course_id=course.id,
             student_id=student.id
         ).first()
+        
+        delay = None
+        if attendance and attendance.status == 'late' and attendance.scanned_at and course.started_at:
+            delta = attendance.scanned_at - course.started_at
+            # delay in minutes
+            delay = int(max(0, delta.total_seconds() // 60))
+
         attendance_data.append({
             'student': student,
-            'attendance': attendance
+            'attendance': attendance,
+            'delay': delay
         })
+
+    late_count = sum(1 for item in attendance_data if item['attendance'] and item['attendance'].status == 'late')
     
     return render_template('teacher/course_detail.html', 
                           course=course,
-                          attendance_data=attendance_data)
+                          attendance_data=attendance_data,
+                          late_count=late_count)
 
 
 @teacher_bp.route('/course/<int:id>/start', methods=['POST'])
@@ -322,12 +333,19 @@ def start_course(id):
     # Create attendance records for all students
     track = course.subject.semester.academic_year.track
     for student in track.students:
-        attendance = Attendance(
+        # Check if record already exists to avoid IntegrityError (e.g. if manually marked before start)
+        existing_attendance = Attendance.query.filter_by(
             course_id=course.id,
-            student_id=student.id,
-            status='absent'
-        )
-        db.session.add(attendance)
+            student_id=student.id
+        ).first()
+        
+        if not existing_attendance:
+            attendance = Attendance(
+                course_id=course.id,
+                student_id=student.id,
+                status='absent'
+            )
+            db.session.add(attendance)
     
     course.status = 'active'
     course.started_at = datetime.utcnow()
@@ -462,6 +480,149 @@ def end_course(id):
     return redirect(url_for('teacher.course_detail', id=id))
 
 
+
+@teacher_bp.route('/course/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+@teacher_required
+def edit_course(id):
+    """Edit an existing course session"""
+    course = Course.query.get_or_404(id)
+    
+    # Verify ownership
+    if course.teacher_id != current_user.id:
+        flash('Vous ne pouvez pas modifier ce cours.', 'danger')
+        return redirect(url_for('teacher.courses'))
+        
+    # Verify status (can only edit pending courses usually)
+    if course.status != 'pending':
+        flash('Impossible de modifier un cours déjà commencé ou terminé.', 'warning')
+        return redirect(url_for('teacher.course_detail', id=id))
+
+    subject = course.subject
+    assignment = TeacherSubjectAssignment.query.filter_by(
+        teacher_id=current_user.id,
+        subject_id=subject.id
+    ).first()
+
+    if request.method == 'POST':
+        course_type = request.form.get('course_type')
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        
+        if course_type not in ['CM', 'TD', 'TP']:
+            flash('Type de cours invalide.', 'danger')
+            return render_template('teacher/course_form.html', subject=subject, assignment=assignment, course=course)
+            
+        # Check permissions if type changed
+        if course_type != course.course_type:
+            can_teach = (
+                (course_type == 'CM' and assignment.teaches_cm) or
+                (course_type == 'TD' and assignment.teaches_td) or
+                (course_type == 'TP' and assignment.teaches_tp)
+            )
+            if not can_teach:
+                flash(f'Vous n\'êtes pas autorisé à enseigner les {course_type}.', 'danger')
+                return render_template('teacher/course_form.html', subject=subject, assignment=assignment, course=course)
+        
+        course.course_type = course_type
+        course.title = title or f"{subject.name} - {course_type}"
+        course.description = description
+        
+        db.session.commit()
+        flash('Séance modifiée avec succès!', 'success')
+        return redirect(url_for('teacher.courses'))
+
+    return render_template('teacher/course_form.html', subject=subject, assignment=assignment, course=course)
+
+
+@teacher_bp.route('/course/delete/<int:id>', methods=['POST'])
+@login_required
+@teacher_required
+def delete_course(id):
+    """Delete a course session"""
+    course = Course.query.get_or_404(id)
+    
+    if course.teacher_id != current_user.id:
+        flash('Action non autorisée.', 'danger')
+        return redirect(url_for('teacher.courses'))
+        
+    if course.status != 'pending':
+        flash('Impossible de supprimer un cours déjà commencé.', 'danger')
+        return redirect(url_for('teacher.courses'))
+        
+    db.session.delete(course)
+    db.session.commit()
+    flash('Séance supprimée.', 'success')
+    return redirect(url_for('teacher.courses'))
+
+
+@teacher_bp.route('/courses/bulk-delete', methods=['POST'])
+@login_required
+@teacher_required
+def bulk_delete_courses():
+    """Delete multiple course sessions"""
+    course_ids = request.form.getlist('course_ids')
+    
+    if not course_ids:
+        flash('Aucune séance sélectionnée.', 'warning')
+        return redirect(url_for('teacher.courses'))
+        
+    deleted_count = 0
+    for course_id in course_ids:
+        course = Course.query.get(course_id)
+        if course and course.teacher_id == current_user.id and course.status == 'pending':
+            db.session.delete(course)
+            deleted_count += 1
+            
+    db.session.commit()
+    
+    if deleted_count > 0:
+        flash(f'{deleted_count} séances supprimées avec succès.', 'success')
+    else:
+        flash('Aucune séance n\'a pu être supprimée (déjà commencées ou non autorisées).', 'warning')
+        
+    return redirect(url_for('teacher.courses'))
+
+
+@teacher_bp.route('/course/<int:course_id>/attendance/<int:student_id>/update', methods=['POST'])
+@login_required
+@teacher_required
+def update_course_attendance(course_id, student_id):
+    """Update attendance status for a specific student in a course"""
+    course = Course.query.get_or_404(course_id)
+    
+    if course.teacher_id != current_user.id:
+        return jsonify({'success': False, 'message': 'Accès non autorisé'}), 403
+    
+    status = request.form.get('status')
+    if status not in ['present', 'absent', 'late']:
+        return jsonify({'success': False, 'message': 'Statut invalide'}), 400
+        
+    attendance = Attendance.query.filter_by(
+        course_id=course_id,
+        student_id=student_id
+    ).first()
+    
+    if not attendance:
+        attendance = Attendance(
+            course_id=course_id,
+            student_id=student_id,
+            status=status
+        )
+        db.session.add(attendance)
+    else:
+        attendance.status = status
+        # If manually marked, maybe update scanned_at? 
+        # If marking present/late manualy, we could set scanned_at to now if None
+        if (status == 'present' or status == 'late') and not attendance.scanned_at:
+            attendance.scanned_at = datetime.utcnow()
+        elif status == 'absent':
+             attendance.scanned_at = None
+        
+    db.session.commit()
+    return jsonify({'success': True})
+
+
 # ==================== ATTENDANCE CONSULTATION ====================
 
 @teacher_bp.route('/subject/<int:id>/attendance')
@@ -500,6 +661,10 @@ def subject_attendance(id):
         total = 0
         present = 0
         
+        # Rate vars (CM/TD)
+        cm_td_total = 0
+        cm_td_points = 0
+
         for course in courses:
             attendance = Attendance.query.filter_by(
                 course_id=course.id,
@@ -511,6 +676,15 @@ def subject_attendance(id):
                 if attendance.status == 'present':
                     present += 1
             
+            # CM/TD Rate Logic (counts late as 0.5)
+            if course.course_type in ['CM', 'TD']:
+                cm_td_total += 1
+                if attendance:
+                    if attendance.status == 'present':
+                        cm_td_points += 1
+                    elif attendance.status == 'late':
+                        cm_td_points += 0.5
+            
             student_attendance['courses'].append({
                 'course': course,
                 'attendance': attendance
@@ -521,7 +695,7 @@ def subject_attendance(id):
         
         student_attendance['total'] = total
         student_attendance['present'] = present
-        student_attendance['rate'] = (present / total * 100) if total > 0 else 100
+        student_attendance['rate'] = (cm_td_points / cm_td_total * 100) if cm_td_total > 0 else 100
         student_attendance['is_rattrapage'] = is_rattrapage
         student_attendance['grade'] = grade
         

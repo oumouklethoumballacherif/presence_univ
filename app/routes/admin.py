@@ -1091,26 +1091,39 @@ def subject_statistics(id):
         late = 0
         absent = 0
         
+        # Vars for Rate (CM/TD)
+        cm_td_total = 0
+        cm_td_points = 0
+        
         for course in courses:
             attendance = Attendance.query.filter_by(course_id=course.id, student_id=student.id).first()
+            status = 'absent'
             if attendance:
-                if attendance.status == 'present':
+                status = attendance.status
+                if status == 'present':
                     present += 1
-                elif attendance.status == 'late':
+                elif status == 'late':
                     late += 1
                 else:
                     absent += 1
             else:
-                absent += 1 # If no record, assume absent? Or handle as not marked. usually assume absent if session completed.
+                absent += 1 
+
+            if course.course_type in ['CM', 'TD']:
+                cm_td_total += 1
+                if status == 'present':
+                    cm_td_points += 1
+                elif status == 'late':
+                    cm_td_points += 0.5
         
-        if total_sessions > 0:
-            # STRICT presence only: Present = 1, Late = 0 (like absent)
-            # User requested to NOT include lates in the grade.
-            attendance_rate = round(present / total_sessions * 100, 1)
-            grade = round(present / total_sessions * 20, 2)
+        if cm_td_total > 0:
+            attendance_rate = round(cm_td_points / cm_td_total * 100, 1)
+            grade = round(cm_td_points / cm_td_total * 20, 2)
         else:
             attendance_rate = 100.0 
             grade = 20.0
+            
+        is_rattrapage, _ = calculate_rattrapage_status(student.id, subject.id)
 
         students_data.append({
             'student': student,
@@ -1118,7 +1131,8 @@ def subject_statistics(id):
             'late': late,
             'absent': absent,
             'rate': attendance_rate,
-            'grade': grade
+            'grade': grade,
+            'is_rattrapage': is_rattrapage
         })
     
     # Sort by lowest attendance rate first (to highlight issues)

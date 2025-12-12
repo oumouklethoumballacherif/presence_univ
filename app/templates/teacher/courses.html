@@ -61,11 +61,56 @@
             </form>
         </div>
 
+        <!-- Floating Actions Bar -->
+        <div id="floatingActionsBar" class="hidden fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+            <div class="bg-white rounded-full shadow-2xl border border-gray-200 px-6 py-4">
+                <div class="flex items-center space-x-6">
+                    <div class="flex items-center space-x-2 border-r border-gray-300 pr-6">
+                        <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                            <i class="fas fa-check text-white text-sm"></i>
+                        </div>
+                        <span class="font-semibold text-gray-700">
+                            <span id="selectedCount">0</span> sélectionné(s)
+                        </span>
+                    </div>
+
+                    <button onclick="bulkEdit()" class="action-btn" title="Modifier">
+                        <div
+                            class="w-12 h-12 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center transition-all transform hover:scale-110">
+                            <i class="fas fa-edit text-white text-lg"></i>
+                        </div>
+                        <span class="text-xs text-gray-600 mt-1">Modifier</span>
+                    </button>
+
+                    <button onclick="bulkDelete()" class="action-btn" title="Supprimer">
+                        <div
+                            class="w-12 h-12 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-all transform hover:scale-110">
+                            <i class="fas fa-trash text-white text-lg"></i>
+                        </div>
+                        <span class="text-xs text-gray-600 mt-1">Supprimer</span>
+                    </button>
+
+                    <button onclick="clearSelection()" class="action-btn" title="Annuler">
+                        <div
+                            class="w-12 h-12 bg-gray-400 hover:bg-gray-500 rounded-full flex items-center justify-center transition-all transform hover:scale-110">
+                            <i class="fas fa-times text-white text-lg"></i>
+                        </div>
+                        <span class="text-xs text-gray-600 mt-1">Annuler</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div class="card overflow-hidden">
             <div class="table-container">
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th class="w-12">
+                                <input type="checkbox" id="selectAll"
+                                    class="w-4 h-4 text-primary border-gray-400 rounded focus:ring-primary cursor-pointer checkbox-gray"
+                                    onchange="toggleSelectAll(this)">
+                            </th>
                             <th>Date</th>
                             <th>Matière</th>
                             <th>Type</th>
@@ -77,6 +122,11 @@
                     <tbody>
                         {% for course in courses %}
                         <tr>
+                            <td>
+                                <input type="checkbox"
+                                    class="course-checkbox w-4 h-4 text-primary border-gray-400 rounded focus:ring-primary cursor-pointer checkbox-gray"
+                                    value="{{ course.id }}" onchange="updateSelection()">
+                            </td>
                             <td>
                                 <div class="font-medium">
                                     {% if course.started_at %}
@@ -258,5 +308,152 @@
             resetSelect(subjectSelect, 'Toutes les matières');
         }
     });
+
+    // Checkbox & Bulk Actions Logic
+    function toggleSelectAll(checkbox) {
+        const checkboxes = document.querySelectorAll('.course-checkbox');
+        checkboxes.forEach(cb => cb.checked = checkbox.checked);
+        updateSelection();
+    }
+
+    function updateSelection() {
+        const checkboxes = document.querySelectorAll('.course-checkbox:checked');
+        const count = checkboxes.length;
+        const floatingBar = document.getElementById('floatingActionsBar');
+        const selectedCount = document.getElementById('selectedCount');
+        const selectAll = document.getElementById('selectAll');
+
+        selectedCount.textContent = count;
+
+        if (count > 0) {
+            floatingBar.classList.remove('hidden');
+            setTimeout(() => {
+                floatingBar.classList.add('animate-bounce-in');
+            }, 10);
+        } else {
+            floatingBar.classList.add('hidden');
+            floatingBar.classList.remove('animate-bounce-in');
+        }
+
+        const totalCheckboxes = document.querySelectorAll('.course-checkbox').length;
+        if (selectAll) {
+            selectAll.checked = count === totalCheckboxes && count > 0;
+            selectAll.indeterminate = count > 0 && count < totalCheckboxes;
+        }
+    }
+
+    function clearSelection() {
+        const checkboxes = document.querySelectorAll('.course-checkbox');
+        checkboxes.forEach(cb => cb.checked = false);
+        const selectAll = document.getElementById('selectAll');
+        if (selectAll) selectAll.checked = false;
+        updateSelection();
+    }
+
+    function bulkEdit() {
+        const checkboxes = document.querySelectorAll('.course-checkbox:checked');
+        const ids = Array.from(checkboxes).map(cb => cb.value);
+
+        if (ids.length === 0) return;
+
+        if (ids.length === 1) {
+            window.location.href = `/teacher/course/edit/${ids[0]}`;
+        } else {
+            alert('Veuillez sélectionner un seul cours à modifier à la fois.');
+        }
+    }
+
+    function bulkDelete() {
+        const checkboxes = document.querySelectorAll('.course-checkbox:checked');
+        const ids = Array.from(checkboxes).map(cb => cb.value);
+
+        if (ids.length === 0) return;
+
+        if (confirm(`Êtes-vous sûr de vouloir supprimer ${ids.length} cours ?`)) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/teacher/courses/bulk-delete';
+
+            ids.forEach(id => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'course_ids';
+                input.value = id;
+                form.appendChild(input);
+            });
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
 </script>
+
+<style>
+    .action-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        border: none;
+        background: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-2px);
+    }
+
+    .checkbox-gray {
+        background-color: #f3f4f6;
+        border-color: #d1d5db !important;
+        opacity: 0.7;
+        transition: all 0.2s ease;
+    }
+
+    .checkbox-gray:hover {
+        opacity: 1;
+        border-color: #9ca3af !important;
+    }
+
+    .checkbox-gray:checked {
+        background-color: var(--primary-color, #163A59) !important;
+        border-color: var(--primary-color, #163A59) !important;
+        opacity: 1;
+    }
+
+    input[type="checkbox"]:indeterminate {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10h8'/%3e%3c/svg%3e");
+        background-color: var(--primary-color, #163A59) !important;
+        border-color: var(--primary-color, #163A59) !important;
+        opacity: 1 !important;
+    }
+
+    @keyframes bounceIn {
+        0% {
+            opacity: 0;
+            transform: translate(-50%, 100px);
+        }
+
+        60% {
+            opacity: 1;
+            transform: translate(-50%, -10px);
+        }
+
+        80% {
+            transform: translate(-50%, 5px);
+        }
+
+        100% {
+            transform: translate(-50%, 0);
+        }
+    }
+
+    .animate-bounce-in {
+        animation: bounceIn 0.5s ease-out;
+    }
+
+    #floatingActionsBar {
+        transition: opacity 0.3s ease-in-out;
+    }
+</style>
 {% endblock %}

@@ -52,6 +52,10 @@
     <div class="absolute bottom-6 left-6 right-6">
         <div class="p-4 bg-white/10 rounded-lg mb-4">
             <p class="text-white/80 text-sm">{{ current_user.full_name }}</p>
+            {% if current_user.matricule %}
+            <p class="text-white/60 text-xs mt-0.5">{{ current_user.matricule }}</p>
+            {% endif %}
+            <p class="text-white/60 text-xs mt-0.5">{{ current_user.email }}</p>
             <div class="flex flex-wrap gap-1 mt-1">
                 {% if current_user.is_dept_head %}
                 <span class="badge badge-warning text-xs">Chef Dept.</span>

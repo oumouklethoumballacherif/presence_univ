@@ -399,15 +399,28 @@ def calculate_rattrapage_status(student_id, subject_id):
         
         if course.course_type in ['CM', 'TD']:
             cm_td_total += 1
-            if attendance and attendance.status == 'absent':
-                cm_td_absent += 1
+            if attendance:
+                if attendance.status == 'absent':
+                    cm_td_absent += 1
+                elif attendance.status == 'late':
+                    cm_td_absent += 0.5
         elif course.course_type == 'TP':
-            if attendance and attendance.status == 'absent':
-                tp_absent += 1
+            if attendance:
+                if attendance.status == 'absent':
+                    tp_absent += 1
+                elif attendance.status == 'late':
+                    tp_absent += 0.5
     
     # Check rattrapage conditions
-    cm_td_rate = cm_td_absent / cm_td_total if cm_td_total > 0 else 0
-    is_rattrapage = cm_td_rate > 0.25 or tp_absent >= 2
+    # Logic Update: User wants Rattrapage if Presence Rate < 25% (CM/TD)
+    # OR if TP absences >= 2
+    
+    # Calculate Presence Rate (considering Late as 0.5 presence)
+    # cm_td_absent now includes 0.5 for lates, so:
+    cm_td_presence_count = cm_td_total - cm_td_absent
+    cm_td_rate = cm_td_presence_count / cm_td_total if cm_td_total > 0 else 1.0
+    
+    is_rattrapage = cm_td_rate < 0.25 or tp_absent >= 2
     
     stats = {
         'cm_td_total': cm_td_total,
@@ -434,19 +447,25 @@ def calculate_attendance_grade(student_id, subject_id):
         status='completed'
     ).all()
     
-    if not completed_courses:
-        return 20  # No courses yet, full grade
-    
-    total = len(completed_courses)
-    present = 0
+    cm_td_total = 0
+    cm_td_points = 0
     
     for course in completed_courses:
-        attendance = Attendance.query.filter_by(
-            course_id=course.id,
-            student_id=student_id
-        ).first()
-        if attendance and attendance.status == 'present':
-            present += 1
+        if course.course_type in ['CM', 'TD']:
+            cm_td_total += 1
+            attendance = Attendance.query.filter_by(
+                course_id=course.id,
+                student_id=student_id
+            ).first()
+            
+            if attendance:
+                if attendance.status == 'present':
+                    cm_td_points += 1
+                elif attendance.status == 'late':
+                    cm_td_points += 0.5
     
-    rate = present / total if total > 0 else 1
+    if cm_td_total == 0:
+        return 20.0
+        
+    rate = cm_td_points / cm_td_total
     return round(rate * 20, 2)

@@ -5,3 +5,8 @@ instance/
 .env
 .DS_Store
 .vscode/
+app/config_local.py
+
+
+
+

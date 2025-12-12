@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from app.models import (db, User, Subject, Course, Attendance, AttendanceToken,
                         calculate_rattrapage_status, calculate_attendance_grade)
@@ -228,10 +228,12 @@ def record_attendance():
     
     attendance.scanned_at = datetime.utcnow()
     
-    # Calculate status based on time (Late if > 20 mins)
+    # Calculate status based on time (Late if > threshold)
     if course.started_at:
         delta = (attendance.scanned_at - course.started_at).total_seconds()
-        if delta > 1200: # 20 minutes
+        threshold_seconds = current_app.config.get('LATE_THRESHOLD_MINUTES', 20) * 60
+        
+        if delta > threshold_seconds:
             attendance.status = 'late'
         else:
             attendance.status = 'present'

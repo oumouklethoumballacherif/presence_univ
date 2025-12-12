@@ -42,7 +42,10 @@
                         style="outline: none;">
                 </div>
                 <!-- Compteur -->
-                <div class="flex-shrink-0">
+                <div class="flex-shrink-0 flex items-center space-x-3">
+                    <button onclick="exportToPDF()" class="btn-secondary whitespace-nowrap">
+                        <i class="fas fa-file-pdf mr-2 text-red-600"></i>Exporter PDF
+                    </button>
                     <span
                         class="inline-flex items-center px-4 py-2.5 rounded-lg bg-primary text-white font-medium whitespace-nowrap">
                         <i class="fas fa-users mr-2"></i>
@@ -154,5 +157,38 @@
             noResultsRow.style.display = visibleCount === 0 && searchTerm ? '' : 'none';
         }
     });
+</script>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+    function exportToPDF() {
+        // Clone the table card to modify it for PDF without affecting view
+        const element = document.querySelector('.card');
+        const subjectName = "{{ subject.name }}";
+
+        const opt = {
+            margin: [10, 10],
+            filename: `presence_${subjectName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+
+        // Temporary title for PDF
+        const title = document.createElement('h2');
+        title.innerText = `Fiche de Présence - ${subjectName}`;
+        title.style.textAlign = 'center';
+        title.style.marginBottom = '20px';
+        title.style.color = '#163A59';
+
+        // Wrap content
+        const container = document.createElement('div');
+        container.appendChild(title);
+        container.appendChild(element.cloneNode(true));
+
+        html2pdf().set(opt).from(container).save();
+    }
 </script>
 {% endblock %}
