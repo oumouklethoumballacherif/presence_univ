@@ -1,72 +1,76 @@
 <!-- Sidebar -->
-<aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
-    <div class="mb-8">
-        <div class="flex items-center space-x-3">
-            <div class="bg-white p-2 rounded-lg">
-                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
-            </div>
-            <div>
-                <h2 class="text-white font-bold">UIR Présence</h2>
-                <p class="text-white/60 text-sm">Enseignant</p>
+<aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40 flex flex-col justify-between overflow-y-auto">
+    <div>
+        <div class="mb-10">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-1.5 rounded-lg shadow-sm">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10 w-auto">
+                </div>
+                <div>
+                    <h2 class="text-white font-bold text-lg leading-tight">UIR Présence</h2>
+                    <p class="text-white/60 text-sm font-medium">Enseignant</p>
+                </div>
             </div>
         </div>
-    </div>
 
-    <nav class="space-y-2">
-        <a href="{{ url_for('teacher.dashboard') }}"
-            class="sidebar-link {% if request.endpoint == 'teacher.dashboard' %}active{% endif %}">
-            <i class="fas fa-book"></i>Mes Cours
-        </a>
-        <a href="{{ url_for('teacher.courses') }}"
-            class="sidebar-link {% if 'courses' in request.endpoint %}active{% endif %}">
-            <i class="fas fa-calendar"></i>Mes Séances
-        </a>
+        <nav class="space-y-1">
+            <a href="{{ url_for('teacher.dashboard') }}"
+                class="sidebar-link {% if request.endpoint == 'teacher.dashboard' %}active{% endif %} mb-1">
+                <i class="fas fa-book w-6"></i>Mes Cours
+            </a>
+            <!-- Assuming teacher.courses exists for 'Mes Séances' based on previous file content -->
+            <a href="{{ url_for('teacher.courses') }}"
+                class="sidebar-link {% if 'courses' in request.endpoint or 'session' in request.endpoint %}active{% endif %}">
+                <i class="fas fa-calendar-alt w-6"></i>Mes Séances
+            </a>
 
-        {% if current_user.dashboard_tabs and 'gestion_departement' in current_user.dashboard_tabs %}
-        <div class="border-t border-white/20 my-4 pt-4">
-            <p class="text-white/50 text-xs uppercase mb-2">Chef Département</p>
+            {% if current_user.is_track_head %}
+            <div class="pt-6 pb-3">
+                <p class="text-white/40 text-xs font-bold uppercase tracking-wider pl-4">Chef Filière</p>
+            </div>
+
+            <a href="{{ url_for('teacher.track_management') }}"
+                class="sidebar-link {% if 'track_management' in request.endpoint %}active{% endif %} mb-1">
+                <i class="fas fa-graduation-cap w-6"></i>Gestion Filière
+            </a>
+            <a href="{{ url_for('teacher.track_students') }}"
+                class="sidebar-link {% if 'track_students' in request.endpoint %}active{% endif %} mb-1">
+                <i class="fas fa-user-graduate w-6"></i>Étudiants
+            </a>
+            <a href="{{ url_for('teacher.track_statistics') }}"
+                class="sidebar-link {% if 'track_statistics' in request.endpoint %}active{% endif %}">
+                <i class="fas fa-chart-bar w-6"></i>Statistiques
+            </a>
+            {% endif %}
+
+            {% if current_user.is_dept_head %}
+            <div class="pt-6 pb-3">
+                <p class="text-white/40 text-xs font-bold uppercase tracking-wider pl-4">Chef Département</p>
+            </div>
             <a href="{{ url_for('teacher.department_management') }}"
                 class="sidebar-link {% if 'department' in request.endpoint %}active{% endif %}">
-                <i class="fas fa-building"></i>Gestion Département
+                <i class="fas fa-building w-6"></i>Gestion Département
             </a>
-        </div>
-        {% endif %}
-
-        {% if current_user.dashboard_tabs and 'gestion_filiere' in current_user.dashboard_tabs %}
-        <div class="border-t border-white/20 my-4 pt-4">
-            <p class="text-white/50 text-xs uppercase mb-2">Chef Filière</p>
-            <a href="{{ url_for('teacher.track_management') }}"
-                class="sidebar-link {% if 'track' in request.endpoint %}active{% endif %}">
-                <i class="fas fa-graduation-cap"></i>Gestion Filière
-            </a>
-            <a href="{{ url_for('teacher.track_students') }}" class="sidebar-link">
-                <i class="fas fa-user-graduate"></i>Étudiants
-            </a>
-            <a href="{{ url_for('teacher.track_statistics') }}" class="sidebar-link">
-                <i class="fas fa-chart-bar"></i>Statistiques
-            </a>
-        </div>
-        {% endif %}
-    </nav>
-
-    <div class="absolute bottom-6 left-6 right-6">
-        <div class="p-4 bg-white/10 rounded-lg mb-4">
-            <p class="text-white/80 text-sm">{{ current_user.full_name }}</p>
-            {% if current_user.matricule %}
-            <p class="text-white/60 text-xs mt-0.5">{{ current_user.matricule }}</p>
             {% endif %}
-            <p class="text-white/60 text-xs mt-0.5">{{ current_user.email }}</p>
-            <div class="flex flex-wrap gap-1 mt-1">
-                {% if current_user.is_dept_head %}
-                <span class="badge badge-warning text-xs">Chef Dept.</span>
-                {% endif %}
-                {% if current_user.is_track_head %}
-                <span class="badge badge-success text-xs">Chef Filière</span>
-                {% endif %}
-            </div>
+        </nav>
+    </div>
+
+    <div>
+        <div class="bg-white/5 rounded-xl p-4 mb-4 backdrop-blur-sm border border-white/5">
+            <p class="text-white font-semibold text-sm">{{ current_user.full_name }}</p>
+            {% if current_user.matricule %}
+            <p class="text-white/50 text-xs mt-0.5">{{ current_user.matricule }}</p>
+            {% endif %}
+            <p class="text-white/50 text-xs mt-0.5 mb-2 truncate" title="{{ current_user.email }}">{{ current_user.email
+                }}</p>
+
+
         </div>
-        <a href="{{ url_for('auth.logout') }}" class="sidebar-link text-red-300">
-            <i class="fas fa-sign-out-alt"></i>Déconnexion
+
+        <a href="{{ url_for('auth.logout') }}"
+            class="flex items-center text-red-300 hover:text-red-200 transition-colors px-2 py-2 group">
+            <i class="fas fa-sign-out-alt mr-2 group-hover:translate-x-1 transition-transform"></i>
+            <span class="font-medium">Déconnexion</span>
         </a>
     </div>
 </aside>

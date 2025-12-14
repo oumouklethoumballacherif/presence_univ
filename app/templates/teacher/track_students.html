@@ -1,42 +1,80 @@
 {% extends "base.html" %}
 
-{% block title %}Étudiants - UIR Présence{% endblock %}
+{% block title %}Étudiants - {{ track.name }} - UIR Présence{% endblock %}
 
 {% block body %}
 <div class="flex min-h-screen">
-    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
+    <!-- Sidebar -->
+    {% include "teacher/sidebar.html" %}
+
+    <main class="flex-1 ml-64 p-8">
         <div class="mb-8">
-            <div class="flex items-center space-x-3">
-                <div class="bg-white p-2 rounded-lg">
-                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
+            <h1 class="text-3xl font-bold text-primary">Étudiants</h1>
+            <p class="text-gray-500">{{ track.name }} - Vue globale</p>
+        </div>
+
+        <div class="card p-4 mb-6">
+            <form method="GET" class="flex items-center space-x-4">
+                <div class="flex-1">
+                    <input type="text" name="search" value="{{ search }}" class="input-field"
+                        placeholder="Rechercher (Nom, Email, Matricule)...">
+                </div>
+                <button type="submit" class="btn-primary"><i class="fas fa-search"></i></button>
+            </form>
+        </div>
+
+        <!-- Floating Action Bar -->
+        <div id="floatingActionsBar" class="hidden fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+            <div class="bg-white rounded-full shadow-2xl border border-gray-200 px-6 py-4 flex items-center space-x-6">
+                <div class="flex items-center space-x-2 border-r border-gray-300 pr-6">
+                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                        <i class="fas fa-check text-white text-sm"></i>
+                    </div>
+                    <span class="font-semibold text-gray-700">
+                        <span id="selectedCount">0</span> sélectionné(s)
+                    </span>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <button id="editBtn" onclick="editSelected()"
+                        class="action-btn hidden text-blue-600 hover:text-blue-700">
+                        <div
+                            class="w-12 h-12 bg-blue-50 hover:bg-blue-100 rounded-full flex items-center justify-center transition-all">
+                            <i class="fas fa-pencil-alt text-lg"></i>
+                        </div>
+                        <span class="text-xs font-medium mt-1">Modifier</span>
+                    </button>
+
+                    <form id="bulkDeleteForm" action="{{ url_for('teacher.delete_students_bulk') }}" method="POST">
+                        <button type="submit"
+                            onclick="return confirm('Voulez-vous vraiment supprimer les étudiants sélectionnés ? Cette action est irréversible.')"
+                            class="action-btn text-red-600 hover:text-red-700">
+                            <div
+                                class="w-12 h-12 bg-red-50 hover:bg-red-100 rounded-full flex items-center justify-center transition-all">
+                                <i class="fas fa-trash-alt text-lg"></i>
+                            </div>
+                            <span class="text-xs font-medium mt-1">Supprimer</span>
+                        </button>
+                    </form>
+
+                    <button onclick="clearSelection()" class="action-btn text-gray-500 hover:text-gray-700">
+                        <div
+                            class="w-12 h-12 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-all">
+                            <i class="fas fa-times text-lg"></i>
+                        </div>
+                        <span class="text-xs font-medium mt-1">Annuler</span>
+                    </button>
                 </div>
             </div>
         </div>
-        <nav class="space-y-2">
-            <a href="{{ url_for('teacher.dashboard') }}" class="sidebar-link"><i class="fas fa-book"></i>Mes Cours</a>
-            <a href="{{ url_for('teacher.track_management') }}" class="sidebar-link"><i
-                    class="fas fa-graduation-cap"></i>Gestion Filière</a>
-            <a href="{{ url_for('teacher.track_students') }}" class="sidebar-link active"><i
-                    class="fas fa-user-graduate"></i>Étudiants</a>
-            <a href="{{ url_for('teacher.track_statistics') }}" class="sidebar-link"><i
-                    class="fas fa-chart-bar"></i>Statistiques</a>
-        </nav>
-    </aside>
 
-    <main class="flex-1 ml-64 p-8">
-        <div class="flex items-center justify-between mb-8">
-            <div>
-                <h1 class="text-3xl font-bold text-primary">Étudiants</h1>
-                <p class="text-gray-500">{{ track.name }}</p>
-            </div>
-            <div class="flex space-x-3">
-                <a href="{{ url_for('teacher.import_students') }}" class="btn-secondary">
-                    <i class="fas fa-file-excel mr-2"></i>Import Excel
-                </a>
-                <a href="{{ url_for('teacher.create_student') }}" class="btn-primary">
-                    <i class="fas fa-plus mr-2"></i>Nouvel étudiant
-                </a>
-            </div>
+        <div class="flex justify-end mb-6 space-x-4">
+            <a href="{{ url_for('teacher.import_students') }}" class="btn-secondary">
+                <i class="fas fa-file-excel mr-2"></i>Importer (Excel)
+            </a>
+            <a href="{{ url_for('teacher.create_student') }}" class="btn-primary">
+                <i class="fas fa-plus mr-2"></i>Nouveau Étudiant
+            </a>
         </div>
 
         <div class="card">
@@ -44,23 +82,49 @@
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th class="w-12">
+                                <input type="checkbox" id="selectAll"
+                                    class="w-4 h-4 text-primary border-gray-400 rounded focus:ring-primary cursor-pointer checkbox-gray"
+                                    onchange="toggleSelectAll(this)">
+                            </th>
+                            <th>Matricule</th>
                             <th>Étudiant</th>
                             <th>Email</th>
-                            <th>Compte</th>
+                            <th>Année</th>
+                            <th>Statut</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for student in students %}
-                        <tr>
+                        <tr class="student-row hover:bg-gray-50 transition-colors">
+                            <td>
+                                <input type="checkbox" name="student_ids" form="bulkDeleteForm"
+                                    class="student-checkbox w-4 h-4 text-primary border-gray-400 rounded focus:ring-primary cursor-pointer checkbox-gray"
+                                    value="{{ student.id }}" onchange="updateSelection()">
+                            </td>
+                            <td class="font-mono text-sm text-gray-600">{{ student.matricule or '-' }}</td>
                             <td>
                                 <div class="flex items-center space-x-3">
-                                    <div class="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center">
-                                        <i class="fas fa-user-graduate text-accent"></i>
+                                    <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                        <span class="text-primary font-bold text-sm">
+                                            {{ student.first_name[0]|upper }}{{ student.last_name[0]|upper }}
+                                        </span>
                                     </div>
-                                    <span class="font-medium">{{ student.full_name }}</span>
+                                    <div>
+                                        <div class="font-medium text-gray-800">{{ student.full_name }}</div>
+                                    </div>
                                 </div>
                             </td>
                             <td class="text-gray-600">{{ student.email }}</td>
+                            <td>
+                                {% if student.current_year %}
+                                <span class="badge badge-secondary">{{ student.current_year.name }}</span>
+                                {% else %}
+                                <span class="badge bg-green-100 text-green-700 border border-green-200">
+                                    <i class="fas fa-check-circle mr-1"></i>Diplômé
+                                </span>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if student.password_hash %}
                                 <span class="badge badge-success">Actif</span>
@@ -71,8 +135,8 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="3" class="text-center text-gray-500 py-8">
-                                Aucun étudiant
+                            <td colspan="6" class="text-center text-gray-500 py-8">
+                                Aucun étudiant trouvé.
                             </td>
                         </tr>
                         {% endfor %}
@@ -82,4 +146,131 @@
         </div>
     </main>
 </div>
+
+<script>
+    function toggleSelectAll(checkbox) {
+        const checkboxes = document.querySelectorAll('.student-checkbox');
+        checkboxes.forEach(cb => cb.checked = checkbox.checked);
+        updateSelection();
+    }
+
+    function updateSelection() {
+        const checkboxes = document.querySelectorAll('.student-checkbox:checked');
+        const count = checkboxes.length;
+        const floatingBar = document.getElementById('floatingActionsBar');
+        const selectedCount = document.getElementById('selectedCount');
+        const selectAll = document.getElementById('selectAll');
+        const editBtn = document.getElementById('editBtn');
+
+        selectedCount.textContent = count;
+
+        // Show/Hide Edit button (Only if exactly 1 selected)
+        if (count === 1) {
+            editBtn.classList.remove('hidden');
+        } else {
+            editBtn.classList.add('hidden');
+        }
+
+        if (count > 0) {
+            floatingBar.classList.remove('hidden');
+            setTimeout(() => {
+                floatingBar.classList.add('animate-bounce-in');
+            }, 10);
+        } else {
+            floatingBar.classList.add('hidden');
+            floatingBar.classList.remove('animate-bounce-in');
+        }
+
+        const totalCheckboxes = document.querySelectorAll('.student-checkbox').length;
+        if (totalCheckboxes > 0) {
+            selectAll.checked = count === totalCheckboxes;
+            selectAll.indeterminate = count > 0 && count < totalCheckboxes;
+        }
+    }
+
+    function clearSelection() {
+        const checkboxes = document.querySelectorAll('.student-checkbox');
+        checkboxes.forEach(cb => cb.checked = false);
+        document.getElementById('selectAll').checked = false;
+        updateSelection();
+    }
+
+    function editSelected() {
+        const selected = document.querySelector('.student-checkbox:checked');
+        if (selected) {
+            const studentId = selected.value;
+            // Use JS to navigate because Flask URL building needs ID
+            window.location.href = "/teacher/track/student/" + studentId + "/edit";
+        }
+    }
+</script>
+
+<style>
+    .action-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        border: none;
+        background: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-2px);
+    }
+
+    .checkbox-gray {
+        background-color: #f3f4f6;
+        border-color: #d1d5db !important;
+        opacity: 0.7;
+        transition: all 0.2s ease;
+    }
+
+    .checkbox-gray:hover {
+        opacity: 1;
+        border-color: #9ca3af !important;
+    }
+
+    .checkbox-gray:checked {
+        background-color: var(--primary-color, #163A59) !important;
+        border-color: var(--primary-color, #163A59) !important;
+        opacity: 1;
+    }
+
+    input[type="checkbox"]:indeterminate {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10h8'/%3e%3c/svg%3e");
+        background-color: var(--primary-color, #163A59) !important;
+        border-color: var(--primary-color, #163A59) !important;
+        opacity: 1 !important;
+    }
+
+    @keyframes bounceIn {
+        0% {
+            opacity: 0;
+            transform: translate(-50%, 100px);
+        }
+
+        60% {
+            opacity: 1;
+            transform: translate(-50%, -10px);
+        }
+
+        80% {
+            transform: translate(-50%, 5px);
+        }
+
+        100% {
+            transform: translate(-50%, 0);
+        }
+    }
+
+    .animate-bounce-in {
+        animation: bounceIn 0.5s ease-out;
+    }
+
+    #floatingActionsBar {
+        transition: opacity 0.3s ease-in-out;
+    }
+</style>
 {% endblock %}

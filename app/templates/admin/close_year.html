@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Clôture de l'Année Académique - Admin{% endblock %}
+
+{% block body %}
+<div class="flex h-screen bg-gray-50">
+    <!-- Sidebar -->
+    {% include "admin/sidebar.html" %}
+
+    <main class="flex-1 overflow-y-auto p-8">
+        <div class="max-w-2xl mx-auto">
+            <div class="mb-8 text-center">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-exclamation-triangle text-2xl text-red-600"></i>
+                </div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Clôture de l'Année Académique</h1>
+                <p class="text-gray-500">Action irréversible - Zone de Danger</p>
+            </div>
+
+            <div class="card p-8 border-2 border-red-100 shadow-lg">
+                <div class="prose max-w-none text-gray-600 mb-8">
+                    <p class="font-bold text-gray-800 mb-4">Cette action va entraîner les changements suivants sur TOUT
+                        le système :</p>
+                    <ul class="list-disc pl-5 space-y-2">
+                        <li><span class="font-semibold text-red-600">Suppression définitive</span> de tous les
+                            historiques de présence (Calls).</li>
+                        <li><span class="font-semibold text-red-600">Suppression définitive</span> de toutes les séances
+                            de cours créées par les enseignants.</li>
+                        <li><span class="font-semibold text-blue-600">Promotion automatique</span> de tous les étudiants
+                            vers l'année supérieure (ex: L1 → L2).</li>
+                        <li>Les étudiants en fin de cycle (ex: L3/M2) seront marqués comme "Finissants" (retirés de
+                            l'année en cours).</li>
+                    </ul>
+                    <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Les comptes des étudiants, enseignants et la structure académique (filières, matières) seront
+                        conservés.
+                    </div>
+                </div>
+
+                <form method="POST"
+                    onsubmit="return confirm('ÊTES-VOUS SÛR ? Cette action va effacer toutes les données de présence et sessions de l\'année. Tapez OUI pour confirmer.');">
+                    <div class="mb-6">
+                        <label class="flex items-start">
+                            <input type="checkbox" required
+                                class="mt-1 w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                            <span class="ml-2 text-sm text-gray-700">Je comprends que cette action est irréversible et
+                                que toutes les données de l'année en cours seront archivées/supprimées.</span>
+                        </label>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <a href="{{ url_for('admin.dashboard') }}" class="btn-secondary">Annuler</a>
+                        <button type="submit"
+                            class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition font-bold shadow-lg flex items-center">
+                            <i class="fas fa-skull-crossbones mr-2"></i>
+                            Clôturer l'Année & Réinitialiser
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

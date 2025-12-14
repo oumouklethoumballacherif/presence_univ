@@ -25,7 +25,23 @@ def dashboard():
             'years': []
         }
         
+        # Only show the student's CURRENT academic year
+        current_year_id = current_user.current_year_id
+        
+        # If student has completed studies or has no year assigned, show nothing
+        if not current_year_id:
+            tracks_data.append({
+                'track': track,
+                'years': [],
+                'status': 'completed'  # Flag for template
+            })
+            continue
+
         for year in track.academic_years:
+            # Filter: Show only the year the student is currently enrolled in
+            if year.id != current_year_id:
+                continue
+                
             year_data = {
                 'year': year,
                 'semesters': []

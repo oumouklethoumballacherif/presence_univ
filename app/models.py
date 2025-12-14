@@ -137,6 +137,7 @@ class Track(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    code = db.Column(db.String(20))  # e.g. "GI", "GE"
     level = db.Column(db.String(20), nullable=False, default='licence')  # licence, master, doctorat
     description = db.Column(db.Text)
     
@@ -374,8 +375,9 @@ def calculate_rattrapage_status(student_id, subject_id):
     """
     Calculate if a student is in rattrapage for a subject.
     Rules:
-    - >25% absences in CM+TD -> Rattrapage
-    - >=2 absences in TP -> Rattrapage
+    - >= 25% global absences (CM+TD+TP) -> Rattrapage
+    - >= 2 absences in TD -> Rattrapage
+    - >= 2 absences in TP -> Rattrapage
     """
     subject = Subject.query.get(subject_id)
     if not subject:
@@ -387,48 +389,72 @@ def calculate_rattrapage_status(student_id, subject_id):
         status='completed'
     ).all()
     
-    cm_td_total = 0
-    cm_td_absent = 0
+    total_sessions = 0
+    total_absent = 0
+    
+    td_absent = 0
     tp_absent = 0
     
     for course in completed_courses:
+        # Increment total sessions count
+        total_sessions += 1
+        
         attendance = Attendance.query.filter_by(
             course_id=course.id,
             student_id=student_id
         ).first()
         
-        if course.course_type in ['CM', 'TD']:
-            cm_td_total += 1
-            if attendance:
-                if attendance.status == 'absent':
-                    cm_td_absent += 1
-                elif attendance.status == 'late':
-                    cm_td_absent += 0.5
+        # Calculate absences (weighted)
+        current_absent = 0
+        if attendance:
+            if attendance.status == 'absent':
+                current_absent = 1
+            elif attendance.status == 'late':
+                current_absent = 0.5
+        else:
+            # No attendance record = Absent (assuming all students should be marked)
+            # Or should we ignore? Usually if completed, attendance should differ from None.
+            # But let's assume if no record found for a completed course, it might be safe to ignore or treat as present?
+            # Existing code treated "if attendance: ... elif ...". Implicitly treated no record as Present? sw
+            # Let's stick to only counting if attendance exists and is absent/late.
+            # Wait, `cm_td_total += 1` was always incremented. `cm_td_absent` only if attendance.
+            # So no record = Present.
+            pass
+            
+        total_absent += current_absent
+        
+        # Specific counters
+        if course.course_type == 'TD':
+            td_absent += current_absent
         elif course.course_type == 'TP':
-            if attendance:
-                if attendance.status == 'absent':
-                    tp_absent += 1
-                elif attendance.status == 'late':
-                    tp_absent += 0.5
+            tp_absent += current_absent
+    
+    # Calculate Global Absence Rate
+    absence_rate = total_absent / total_sessions if total_sessions > 0 else 0.0
     
     # Check rattrapage conditions
-    # Logic Update: User wants Rattrapage if Presence Rate < 25% (CM/TD)
-    # OR if TP absences >= 2
+    is_rattrapage_rate = absence_rate >= 0.25
+    is_rattrapage_td = td_absent >= 2
+    is_rattrapage_tp = tp_absent >= 2
     
-    # Calculate Presence Rate (considering Late as 0.5 presence)
-    # cm_td_absent now includes 0.5 for lates, so:
-    cm_td_presence_count = cm_td_total - cm_td_absent
-    cm_td_rate = cm_td_presence_count / cm_td_total if cm_td_total > 0 else 1.0
-    
-    is_rattrapage = cm_td_rate < 0.25 or tp_absent >= 2
+    is_rattrapage = is_rattrapage_rate or is_rattrapage_td or is_rattrapage_tp
     
     stats = {
-        'cm_td_total': cm_td_total,
-        'cm_td_absent': cm_td_absent,
-        'cm_td_rate': cm_td_rate,
+        'total_sessions': total_sessions,
+        'total_absent': total_absent,
+        'absence_rate': absence_rate,
+        'td_absent': td_absent,
         'tp_absent': tp_absent,
-        'is_rattrapage': is_rattrapage
+        'is_rattrapage': is_rattrapage,
+        'reasons': []
     }
+    
+    if is_rattrapage_rate:
+        stats['reasons'].append(f"Taux d'absences global ≥ 25% ({int(absence_rate*100)}%)")
+    if is_rattrapage_td:
+        stats['reasons'].append(f"{td_absent} absence(s) en TD (Max 2)")
+    if is_rattrapage_tp:
+        stats['reasons'].append(f"{tp_absent} absence(s) en TP (Max 2)")
     
     return is_rattrapage, stats
 

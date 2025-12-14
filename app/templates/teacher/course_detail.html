@@ -6,168 +6,187 @@
 <div class="flex min-h-screen">
     {% include 'teacher/sidebar.html' %}
 
-    <main class="flex-1 ml-64 p-8">
-        <div class="mb-8">
-            <a href="{{ url_for('teacher.courses') }}" class="text-primary hover:underline mb-2 inline-block">
-                <i class="fas fa-arrow-left mr-2"></i>Retour aux cours
-            </a>
-            <div class="flex justify-between items-start">
-                <div>
-                    <h1 class="text-3xl font-bold text-primary">{{ course.title }}</h1>
-                    <p class="text-gray-500">{{ course.subject.name }} - {{ course.course_type }}</p>
-                </div>
-                <div>
-                    {% if course.status == 'pending' %}
-                    <form action="{{ url_for('teacher.start_course', id=course.id) }}" method="POST">
-                        <button type="submit" class="btn-primary bg-green-600 hover:bg-green-700">
-                            <i class="fas fa-play mr-2"></i>Démarrer la séance
-                        </button>
-                    </form>
-                    {% elif course.status == 'active' %}
-                    <a href="{{ url_for('teacher.qr_display', id=course.id) }}" class="btn-primary animate-pulse">
-                        <i class="fas fa-qrcode mr-2"></i>Afficher QR Code
-                    </a>
-                    {% else %}
-                    <span class="badge bg-gray-100 text-gray-800 px-4 py-2 text-sm">
-                        <i class="fas fa-check-circle mr-2"></i>Séance terminée
-                    </span>
-                    {% endif %}
-                </div>
+    <main class="flex-1 md:ml-64 transition-all duration-300 min-h-screen bg-gray-50">
+        <!-- Mobile Header -->
+        <div class="md:hidden bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-30">
+            <div class="flex items-center gap-2">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-8">
+                <span class="font-bold text-primary">UIR Présence</span>
             </div>
+            <button onclick="document.querySelector('.sidebar').classList.toggle('open')"
+                class="p-2 text-gray-600 rounded-md hover:bg-gray-100 focus:outline-none">
+                <i class="fas fa-bars fa-lg"></i>
+            </button>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left: Course Info -->
-            <div class="lg:col-span-1 space-y-6">
-                <div class="card p-6">
-                    <h3 class="text-lg font-semibold text-primary mb-4">Informations</h3>
-                    <div class="space-y-4">
-                        <div>
-                            <p class="text-sm text-gray-500">Date</p>
-                            <p class="font-medium">
-                                {% if course.started_at %}
-                                {{ course.started_at.strftime('%d/%m/%Y') }}
-                                {% elif course.scheduled_date %}
-                                {{ course.scheduled_date.strftime('%d/%m/%Y') }}
-                                {% else %}
-                                {{ course.created_at.strftime('%d/%m/%Y') }}
-                                {% endif %}
-                            </p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">Horaires</p>
-                            <p class="font-medium">
-                                {% if course.started_at %}{{ course.started_at.strftime('%H:%M') }}{% else %}--:--{%
-                                endif %}
-                                -
-                                {% if course.ended_at %}{{ course.ended_at.strftime('%H:%M') }}{% else %}--:--{% endif
-                                %}
-                            </p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">Filière</p>
-                            <p class="font-medium">{{ course.subject.semester.academic_year.track.name }}</p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">Description</p>
-                            <p class="text-sm">{{ course.description or 'Aucune description' }}</p>
-                        </div>
+        <div class="p-4 md:p-8">
+            <div class="mb-8">
+                <a href="{{ url_for('teacher.courses') }}" class="text-primary hover:underline mb-2 inline-block">
+                    <i class="fas fa-arrow-left mr-2"></i>Retour aux cours
+                </a>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h1 class="text-3xl font-bold text-primary">{{ course.title }}</h1>
+                        <p class="text-gray-500">{{ course.subject.name }} - {{ course.course_type }}</p>
+                    </div>
+                    <div>
+                        {% if course.status == 'pending' %}
+                        <form action="{{ url_for('teacher.start_course', id=course.id) }}" method="POST">
+                            <button type="submit" class="btn-primary bg-green-600 hover:bg-green-700">
+                                <i class="fas fa-play mr-2"></i>Démarrer la séance
+                            </button>
+                        </form>
+                        {% elif course.status == 'active' %}
+                        <a href="{{ url_for('teacher.qr_display', id=course.id) }}" class="btn-primary animate-pulse">
+                            <i class="fas fa-qrcode mr-2"></i>Afficher QR Code
+                        </a>
+                        {% else %}
+                        <span class="badge bg-gray-100 text-gray-800 px-4 py-2 text-sm">
+                            <i class="fas fa-check-circle mr-2"></i>Séance terminée
+                        </span>
+                        {% endif %}
                     </div>
                 </div>
             </div>
 
-            <!-- Right: Attendance List -->
-            <div class="lg:col-span-2">
-                <div class="card overflow-hidden">
-                    <div class="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div class="flex items-center gap-3">
-                            <h3 class="text-lg font-semibold text-primary">Présences</h3>
-                            <span class="text-sm bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{{
-                                attendance_data|length }} étudiants</span>
-                        </div>
-                        <div class="flex items-center gap-3 w-full md:w-auto">
-                            <!-- Search -->
-                            <div class="relative flex-1 md:w-64">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                                    <i class="fas fa-search"></i>
-                                </span>
-                                <input type="text" id="searchInput" placeholder="Rechercher..."
-                                    class="w-full pl-9 pr-4 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-primary focus:border-primary">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Left: Course Info -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold text-primary mb-4">Informations</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <p class="text-sm text-gray-500">Date</p>
+                                <p class="font-medium">
+                                    {% if course.started_at %}
+                                    {{ course.started_at.strftime('%d/%m/%Y') }}
+                                    {% elif course.scheduled_date %}
+                                    {{ course.scheduled_date.strftime('%d/%m/%Y') }}
+                                    {% else %}
+                                    {{ course.created_at.strftime('%d/%m/%Y') }}
+                                    {% endif %}
+                                </p>
                             </div>
-                            <!-- Filter Link/Button -->
-                            <button id="lateFilterBtn" onclick="toggleLateFilter()"
-                                class="px-3 py-1.5 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-md text-sm font-medium hover:bg-yellow-100 transition-colors flex items-center gap-2">
-                                <i class="fas fa-history"></i>
-                                Retards ({{ late_count }})
-                            </button>
+                            <div>
+                                <p class="text-sm text-gray-500">Horaires</p>
+                                <p class="font-medium">
+                                    {% if course.started_at %}{{ course.started_at.strftime('%H:%M') }}{% else %}--:--{%
+                                    endif %}
+                                    -
+                                    {% if course.ended_at %}{{ course.ended_at.strftime('%H:%M') }}{% else %}--:--{%
+                                    endif
+                                    %}
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Filière</p>
+                                <p class="font-medium">{{ course.subject.semester.academic_year.track.name }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Description</p>
+                                <p class="text-sm">{{ course.description or 'Aucune description' }}</p>
+                            </div>
                         </div>
                     </div>
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Étudiant</th>
-                                    <th>Matricule</th>
-                                    <th>Statut</th>
-                                    <th>Retard</th>
-                                    <th>Heure scan</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in attendance_data %}
-                                <tr class="hover:bg-gray-50 student-row" data-name="{{ item.student.full_name|lower }}"
-                                    data-matricule="{{ item.student.matricule|lower }}"
-                                    data-status="{{ item.attendance.status if item.attendance else 'none' }}">
-                                    <td>
-                                        <div class="font-medium">{{ item.student.full_name }}</div>
-                                        <div class="text-xs text-gray-500">{{ item.student.email }}</div>
-                                    </td>
-                                    <td>{{ item.student.matricule }}</td>
-                                    <td>
-                                        {% if course.status == 'pending' %}
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                            En attente
-                                        </span>
-                                        {% else %}
-                                        <select
-                                            onchange="updateAttendance({{ course.id }}, {{ item.student.id }}, this)"
-                                            class="text-sm rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-1 pl-2 pr-8
+                </div>
+
+                <!-- Right: Attendance List -->
+                <div class="lg:col-span-2">
+                    <div class="card overflow-hidden">
+                        <div class="p-4 border-b flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div class="flex items-center gap-3">
+                                <h3 class="text-lg font-semibold text-primary">Présences</h3>
+                                <span class="text-sm bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{{
+                                    attendance_data|length }} étudiants</span>
+                            </div>
+                            <div class="flex items-center gap-3 w-full md:w-auto">
+                                <!-- Search -->
+                                <div class="relative flex-1 md:w-64">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <input type="text" id="searchInput" placeholder="Rechercher..."
+                                        class="w-full pl-9 pr-4 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-primary focus:border-primary">
+                                </div>
+                                <!-- Filter Link/Button -->
+                                <button id="lateFilterBtn" onclick="toggleLateFilter()"
+                                    class="px-3 py-1.5 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-md text-sm font-medium hover:bg-yellow-100 transition-colors flex items-center gap-2">
+                                    <i class="fas fa-history"></i>
+                                    Retards ({{ late_count }})
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Étudiant</th>
+                                        <th>Matricule</th>
+                                        <th>Statut</th>
+                                        <th>Retard</th>
+                                        <th>Heure scan</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in attendance_data %}
+                                    <tr class="hover:bg-gray-50 student-row"
+                                        data-name="{{ item.student.full_name|lower }}"
+                                        data-matricule="{{ item.student.matricule|lower }}"
+                                        data-status="{{ item.attendance.status if item.attendance else 'none' }}">
+                                        <td>
+                                            <div class="font-medium">{{ item.student.full_name }}</div>
+                                            <div class="text-xs text-gray-500">{{ item.student.email }}</div>
+                                        </td>
+                                        <td>{{ item.student.matricule }}</td>
+                                        <td>
+                                            {% if course.status == 'pending' %}
+                                            <span
+                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                En attente
+                                            </span>
+                                            {% else %}
+                                            <select
+                                                onchange="updateAttendance({{ course.id }}, {{ item.student.id }}, this)"
+                                                class="text-sm rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-1 pl-2 pr-8
                                             {% if item.attendance and item.attendance.status == 'present' %}bg-green-50 text-green-800 border-green-200
                                             {% elif item.attendance and item.attendance.status == 'late' %}bg-yellow-50 text-yellow-800 border-yellow-200
                                             {% elif item.attendance and item.attendance.status == 'absent' %}bg-red-50 text-red-800 border-red-200
                                             {% else %}bg-gray-50 text-gray-800{% endif %}">
-                                            <option value="present" {% if item.attendance and
-                                                item.attendance.status=='present' %}selected{% endif %}>Présent</option>
-                                            <option value="absent" {% if not item.attendance or
-                                                item.attendance.status=='absent' %}selected{% endif %}>Absent</option>
-                                        </select>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if item.delay is defined and item.delay is not none %}
-                                        <span class="text-yellow-700 font-mono font-bold">{{ item.delay }} min</span>
-                                        {% else %}
-                                        <span class="text-gray-300">-</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if item.attendance and item.attendance.scanned_at %}
-                                        {{ item.attendance.scanned_at.strftime('%H:%M') }}
-                                        {% else %}
-                                        -
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% else %}
-                                <tr>
-                                    <td colspan="4" class="text-center text-gray-500 py-8">
-                                        Aucun étudiant inscrit
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                                                <option value="present" {% if item.attendance and
+                                                    item.attendance.status=='present' %}selected{% endif %}>Présent
+                                                </option>
+                                                <option value="absent" {% if not item.attendance or
+                                                    item.attendance.status=='absent' %}selected{% endif %}>Absent
+                                                </option>
+                                            </select>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.delay is defined and item.delay is not none %}
+                                            <span class="text-yellow-700 font-mono font-bold">{{ item.delay }}
+                                                min</span>
+                                            {% else %}
+                                            <span class="text-gray-300">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.attendance and item.attendance.scanned_at %}
+                                            {{ item.attendance.scanned_at.strftime('%H:%M') }}
+                                            {% else %}
+                                            -
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-gray-500 py-8">
+                                            Aucun étudiant inscrit
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

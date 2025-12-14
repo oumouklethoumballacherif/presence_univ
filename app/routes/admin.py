@@ -1,12 +1,13 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from app.models import (db, User, Department, Track, AcademicYear, Semester, Subject,
-                        TeacherSubjectAssignment, Course, Attendance,
+                        TeacherSubjectAssignment, Course, Attendance, AttendanceToken,
                         calculate_rattrapage_status, calculate_attendance_grade)
 from app.utils.decorators import admin_required
 from app.utils.email import send_password_creation_email
 import openpyxl
 from io import BytesIO
+from datetime import datetime
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -993,11 +994,20 @@ def assign_subject_teacher(id):
 @admin_required
 def global_statistics():
     """Global establishment statistics"""
+    # Define School Year Start (Assuming Sept 1st)
+    now = datetime.utcnow()
+    start_year = now.year if now.month >= 9 else now.year - 1
+    school_year_start = datetime(start_year, 9, 1)
+
     # Get all tracks with their statistics
     tracks_data = []
     for track in Track.query.all():
         track_stats = {
             'track': track,
+            # Count only CURRENTLY enrolled students in this track (ignoring alumni if needed, logic is simplifed to all track students here?
+            # actually track.students is all students ever? No, typically filtered by enrolled_tracks table.
+            # But earlier we decided to filter by "Current Year" for subjects.
+            # For "Track" level stats, maybe we just count all students in the track?
             'students_count': len(track.students),
             'teachers_count': len(track.assigned_teachers),
             'subjects_count': 0,
@@ -1012,7 +1022,13 @@ def global_statistics():
             for semester in year.semesters:
                 track_stats['subjects_count'] += len(semester.subjects)
                 for subject in semester.subjects:
-                    courses = Course.query.filter_by(subject_id=subject.id, status='completed').all()
+                    # Filter courses by school year date
+                    courses = Course.query.filter(
+                        Course.subject_id == subject.id,
+                        Course.status == 'completed',
+                        Course.scheduled_date >= school_year_start
+                    ).all()
+                    
                     track_stats['courses_count'] += len(courses)
                     for course in courses:
                         for att in course.attendances:
@@ -1026,15 +1042,20 @@ def global_statistics():
         tracks_data.append(track_stats)
     
     departments_data = []
-    # (Existing track logic...)
     
-    # Subject stats
     subjects_data = []
     subjects = Subject.query.all()
     
     for subject in subjects:
         track = subject.semester.academic_year.track
-        courses = Course.query.filter_by(subject_id=subject.id, status='completed').all()
+        academic_year_id = subject.semester.academic_year_id
+
+        # Filter courses by date
+        courses = Course.query.filter(
+            Course.subject_id == subject.id, 
+            Course.status == 'completed',
+            Course.scheduled_date >= school_year_start
+        ).all()
         
         total_present = 0
         total_attendance = 0
@@ -1049,11 +1070,14 @@ def global_statistics():
         if total_attendance > 0:
             attendance_rate = round(total_present / total_attendance * 100, 1)
             
+        # Filter Students Count (Strict Year Level)
+        current_students_count = len([s for s in track.students if s.current_year_id == academic_year_id])
+
         subjects_data.append({
             'subject': subject,
             'track': track,
             'department': track.department,
-            'students_count': len(track.students),
+            'students_count': current_students_count,
             'courses_count': len(courses),
             'attendance_rate': attendance_rate
         })
@@ -1085,8 +1109,13 @@ def subject_statistics(id):
     courses = Course.query.filter_by(subject_id=subject.id, status='completed').order_by(Course.started_at).all()
     total_sessions = len(courses)
     
+    academic_year_id = subject.semester.academic_year_id
+    
     students_data = []
-    for student in track.students:
+    # Only show students CURRENTLY in this subject's year level
+    relevant_students = [s for s in track.students if s.current_year_id == academic_year_id]
+    
+    for student in relevant_students:
         present = 0
         late = 0
         absent = 0
@@ -1376,3 +1405,139 @@ def import_students():
             return render_template('admin/import_students.html', departments=departments)
     
     return render_template('admin/import_students.html', departments=departments)
+@admin_bp.route('/students/promote', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def promote_students():
+    """Promote students to the next academic year"""
+    if request.method == 'POST':
+        track_id = request.form.get('track_id', type=int)
+        track = Track.query.get_or_404(track_id)
+        
+        # Get all years ordered by orderdesc/asc
+        # We need to process from highest to lowest to avoid double promotion if we do simple updates?
+        # Actually logic:
+        # Get students in track.
+        # For each student, get current year order.
+        # Find year with order + 1.
+        # If exists, update.
+        
+        promoted_count = 0
+        students = User.query.filter(User.enrolled_tracks.any(id=track.id)).all()
+        
+        # Get years map: {order: year_object}
+        years = {y.order: y for y in track.academic_years}
+        
+        for student in students:
+            if not student.current_year:
+                continue
+                
+            # Ensure student is in this track's year (sanity check)
+            if student.current_year.track_id != track.id:
+                continue
+                
+            current_order = student.current_year.order
+            next_order = current_order + 1
+            
+            # Identify next year
+            if next_order in years:
+                # 1. Clean up OLD statistics (Attendance records)
+                # Find all subjects in the CURRENT (old) year
+                old_year = student.current_year
+                for semester in old_year.semesters:
+                    for subject in semester.subjects:
+                        # Delete attendance records for this student in this subject
+                        Attendance.query.filter(
+                            Attendance.student_id == student.id,
+                            Attendance.course.has(subject_id=subject.id)
+                        ).delete(synchronize_session=False)
+
+                # 2. Promote Student
+                student.current_year = years[next_order]
+                promoted_count += 1
+                
+        db.session.commit()
+        flash(f'{promoted_count} étudiants promus. Les statistiques des anciennes matières ont été supprimées.', 'success')
+        return redirect(url_for('admin.students'))
+        
+    tracks = Track.query.order_by(Track.name).all()
+    return render_template('admin/promote_students.html', tracks=tracks)
+
+
+@admin_bp.route('/academic_year/close', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def close_academic_year():
+    """Close the entire academic year (Reset System)"""
+    if request.method == 'POST':
+        # 1. DELETE ALL OPERATIONAL DATA
+        # Delete all attendance records
+        AttendanceToken.query.delete()
+        Attendance.query.delete()
+        
+        # Delete all course sessions
+        Course.query.delete()
+        
+        # 2. PROMOTE ALL STUDENTS
+        tracks = Track.query.all()
+        promoted_count = 0
+        graduated_count = 0
+        
+        for track in tracks:
+            # Map years by order
+            years = {y.order: y for y in track.academic_years}
+            max_order = max(years.keys()) if years else 0
+            
+            # Get students in this track
+            students = User.query.filter(User.enrolled_tracks.any(id=track.id)).all()
+            
+            for student in students:
+                if not student.current_year or student.current_year.track_id != track.id:
+                    continue
+                
+                current_order = student.current_year.order
+                next_order = current_order + 1
+                
+                if next_order in years:
+                    student.current_year = years[next_order]
+                    promoted_count += 1
+                else:
+                    # Graduation / End of Track
+                    # Remove from current year (set to None) to signify completion
+                    student.current_year = None
+                    graduated_count += 1
+        
+        db.session.commit()
+        
+        flash(f'Année académique clôturée avec succès. Système réinitialisé. {promoted_count} étudiants promus, {graduated_count} finissants.', 'success')
+        return redirect(url_for('admin.dashboard'))
+        
+    return render_template('admin/close_year.html')
+
+
+@admin_bp.route('/students/purge_graduated', methods=['POST'])
+@login_required
+@admin_required
+def purge_graduated_students():
+    """Delete all students who have graduated (no current year)"""
+    graduated_students = User.query.filter_by(role='student', current_year_id=None).all()
+    
+    count = 0
+    for student in graduated_students:
+        # Manually delete attendances if cascade is not set (Safety)
+        Attendance.query.filter_by(student_id=student.id).delete()
+        
+        # Remove track enrollments (Association table handled by SQLAlchemy usually, but explicit clear is safe)
+        student.enrolled_tracks = []
+        
+        db.session.delete(student)
+        count += 1
+    
+    db.session.commit()
+    
+    if count > 0:
+        flash(f'{count} étudiants diplômés ont été supprimés définitivement.', 'success')
+    else:
+        flash('Aucun étudiant diplômé à supprimer.', 'info')
+        
+    return redirect(url_for('admin.students'))

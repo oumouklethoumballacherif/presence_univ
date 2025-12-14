@@ -69,7 +69,15 @@
             </div>
         </div>
 
+
         <div class="flex justify-end mb-6 space-x-4">
+            <form action="{{ url_for('admin.purge_graduated_students') }}" method="POST" class="inline-block">
+                <button type="submit"
+                    onclick="return confirm('ATTENTION : Voulez-vous vraiment supprimer définitivement tous les étudiants diplômés ?\n\n- Cette action est irréversible.\n- Tout l\'historique (présences, notes) sera perdu.')"
+                    class="bg-white text-red-600 border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center">
+                    <i class="fas fa-trash-alt mr-2"></i>Purger les diplômés
+                </button>
+            </form>
             <a href="{{ url_for('admin.import_students') }}" class="btn-secondary">
                 <i class="fas fa-file-excel mr-2"></i>Importer (Excel)
             </a>
@@ -128,11 +136,9 @@
                                 {% if student.current_year %}
                                 <span class="badge badge-secondary mr-1">{{ student.current_year.name }}</span>
                                 {% else %}
-                                {% for track in student.enrolled_tracks %}
-                                <span class="badge badge-secondary mr-1">{{ track.level_display }}</span>
-                                {% else %}
-                                <span class="text-gray-400 text-sm">-</span>
-                                {% endfor %}
+                                <span class="badge bg-green-100 text-green-700 border border-green-200">
+                                    <i class="fas fa-check-circle mr-1"></i>Diplômé
+                                </span>
                                 {% endif %}
                             </td>
                         </tr>

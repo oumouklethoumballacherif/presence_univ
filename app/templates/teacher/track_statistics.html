@@ -4,88 +4,197 @@
 
 {% block body %}
 <div class="flex min-h-screen">
-    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
-        <div class="mb-8">
-            <div class="flex items-center space-x-3">
-                <div class="bg-white p-2 rounded-lg">
-                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
-                </div>
-            </div>
-        </div>
-        <nav class="space-y-2">
-            <a href="{{ url_for('teacher.dashboard') }}" class="sidebar-link"><i class="fas fa-book"></i>Mes Cours</a>
-            <a href="{{ url_for('teacher.track_management') }}" class="sidebar-link"><i
-                    class="fas fa-graduation-cap"></i>Gestion Filière</a>
-            <a href="{{ url_for('teacher.track_students') }}" class="sidebar-link"><i
-                    class="fas fa-user-graduate"></i>Étudiants</a>
-            <a href="{{ url_for('teacher.track_statistics') }}" class="sidebar-link active"><i
-                    class="fas fa-chart-bar"></i>Statistiques</a>
-        </nav>
-    </aside>
+    <!-- Sidebar -->
+    {% include "teacher/sidebar.html" %}
 
     <main class="flex-1 ml-64 p-8">
         <div class="mb-8">
             <h1 class="text-3xl font-bold text-primary">Statistiques</h1>
-            <p class="text-gray-500">{{ track.name }} - Note d'assiduité</p>
+            <p class="text-gray-500">Vue d'ensemble et détails par matière</p>
         </div>
 
-        <div class="card">
-            <div class="table-container">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Étudiant</th>
-                            <th>Note Globale /20</th>
-                            <th>Rattrapages</th>
-                            <th>Statut</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for data in students_stats %}
-                        <tr>
-                            <td>
-                                <div class="flex items-center space-x-3">
-                                    <div class="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center">
-                                        <i class="fas fa-user-graduate text-accent"></i>
-                                    </div>
-                                    <span class="font-medium">{{ data.student.full_name }}</span>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="text-2xl font-bold 
-                                    {% if data.total_grade >= 14 %}text-green-600
-                                    {% elif data.total_grade >= 10 %}text-yellow-600
-                                    {% else %}text-red-600{% endif %}">
-                                    {{ data.total_grade }}
-                                </span>
-                            </td>
-                            <td>
-                                {% if data.rattrapage_count > 0 %}
-                                <span class="badge badge-danger">{{ data.rattrapage_count }} matière(s)</span>
-                                {% else %}
-                                <span class="badge badge-success">Aucun</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if data.rattrapage_count == 0 %}
-                                <span class="text-green-600"><i class="fas fa-check-circle mr-1"></i>Normal</span>
-                                {% else %}
-                                <span class="text-red-600"><i
-                                        class="fas fa-exclamation-triangle mr-1"></i>Rattrapage</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="4" class="text-center text-gray-500 py-8">
-                                Aucun étudiant
-                            </td>
-                        </tr>
+        <!-- Section 1: Statistiques par Matière -->
+        <div class="mb-10">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                    <i class="fas fa-book-open mr-2 text-primary"></i>Statistiques par Matière
+                </h2>
+
+                <!-- Filters -->
+                <div class="flex gap-4 mt-2 md:mt-0">
+                    <select id="yearFilter" onchange="filterStats()" class="input-field py-1 text-sm w-40">
+                        <option value="">Toutes les années</option>
+                        {% set years = [] %}
+                        {% for data in subjects_stats %}
+                        {% set y_name = data.subject.semester.academic_year.name %}
+                        {% if y_name not in years %}
+                        {% set _ = years.append(y_name) %}
+                        <option value="{{ y_name }}">{{ y_name }}</option>
+                        {% endif %}
                         {% endfor %}
-                    </tbody>
-                </table>
+                    </select>
+
+                    <select id="trackFilter" onchange="filterStats()" class="input-field py-1 text-sm w-40">
+                        <option value="">Toutes les filières</option>
+                        {% set trks = [] %}
+                        {% for data in subjects_stats %}
+                        {% if data.track_name not in trks %}
+                        {% set _ = trks.append(data.track_name) %}
+                        <option value="{{ data.track_name }}">{{ data.track_name }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Matière</th>
+                                <th>Filière</th>
+                                <th>Année</th>
+                                <th>Séances</th>
+                                <th>Assiduité Globale</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statsTableBody">
+                            {% for data in subjects_stats %}
+                            <tr class="stats-row hover:bg-gray-50 bg-white"
+                                data-year="{{ data.subject.semester.academic_year.name }}"
+                                data-track="{{ data.track_name }}">
+                                <td>
+                                    <div class="font-medium text-gray-900">{{ data.subject.name }}</div>
+                                    <div class="text-xs text-gray-500">{{ data.subject.code }}</div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-secondary">{{ data.track_name }}</span>
+                                    {% if not data.is_in_my_track %}
+                                    <span
+                                        class="ml-2 text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">Exterieur</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="text-sm text-gray-600">{{ data.subject.semester.academic_year.name
+                                        }}</span>
+                                </td>
+                                <td class="text-center font-mono">{{ data.sessions_count }}</td>
+                                <td>
+                                    <div class="flex items-center">
+                                        <div class="w-full h-2 bg-gray-200 rounded-full mr-3">
+                                            <div class="h-full rounded-full transition-all duration-500
+                                                {% if data.rate > 75 %}bg-green-500
+                                                {% elif data.rate >= 50 %}bg-yellow-500
+                                                {% else %}bg-red-500{% endif %}" style="width: {{ data.rate }}%"></div>
+                                        </div>
+                                        <span class="text-sm font-bold w-12 text-right">{{ data.rate }}%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('teacher.subject_attendance', id=data.subject.id) }}"
+                                        class="btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye mr-1"></i>Détails
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-gray-500 py-8">Aucune matière trouvée.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
+
+        <script>
+            function filterStats() {
+                const yearVal = document.getElementById('yearFilter').value;
+                const trackVal = document.getElementById('trackFilter').value;
+                const rows = document.querySelectorAll('.stats-row');
+
+                rows.forEach(row => {
+                    const rYear = row.getAttribute('data-year');
+                    const rTrack = row.getAttribute('data-track');
+
+                    let show = true;
+                    if (yearVal && rYear !== yearVal) show = false;
+                    if (trackVal && rTrack !== trackVal) show = false;
+
+                    row.style.display = show ? '' : 'none';
+                });
+            }
+        </script>
+
+        <!-- Section 2: Synthèse Étudiants de ma Filière -->
+        {% if track %}
+        <div class="mb-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-users mr-2 text-primary"></i>Synthèse Étudiants ({{ track.name }})
+            </h2>
+            <div class="card">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Étudiant</th>
+                                <th>Note Globale /20</th>
+                                <th>Rattrapages</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for data in students_stats %}
+                            <tr class="hover:bg-gray-50">
+                                <td>
+                                    <div class="flex items-center space-x-3">
+                                        <div
+                                            class="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-user-graduate text-accent"></i>
+                                        </div>
+                                        <span class="font-medium">{{ data.student.full_name }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="text-2xl font-bold 
+                                        {% if data.total_grade >= 14 %}text-green-600
+                                        {% elif data.total_grade >= 10 %}text-yellow-600
+                                        {% else %}text-red-600{% endif %}">
+                                        {{ data.total_grade }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if data.rattrapage_count > 0 %}
+                                    <span class="badge badge-danger">{{ data.rattrapage_count }} matière(s)</span>
+                                    {% else %}
+                                    <span class="badge badge-success">Aucun</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if data.rattrapage_count == 0 %}
+                                    <span class="text-green-600"><i class="fas fa-check-circle mr-1"></i>Normal</span>
+                                    {% else %}
+                                    <span class="text-red-600"><i
+                                            class="fas fa-exclamation-triangle mr-1"></i>Rattrapage</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-gray-500 py-8">
+                                    Aucun étudiant inscrit.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </main>
 </div>
 {% endblock %}

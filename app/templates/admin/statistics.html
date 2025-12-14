@@ -108,11 +108,44 @@
 
         <!-- Subjects Statistics -->
         <div class="card mt-8">
-            <div class="p-4 border-b">
+            <div class="p-4 border-b flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <h2 class="text-xl font-semibold text-primary">
                     <i class="fas fa-book mr-2"></i>Statistiques par Matière
                 </h2>
+
+                <!-- Filters -->
+                <div class="flex flex-col md:flex-row gap-4">
+                    <select id="deptFilter" onchange="filterSubjects()" class="input-field py-1 text-sm w-full md:w-48">
+                        <option value="">Tous les départements</option>
+                        {% set depts = [] %}
+                        {% for data in subjects_data %}
+                        {% if data.department.id not in depts %}
+                        {% set _ = depts.append(data.department.id) %}
+                        <option value="{{ data.department.id }}">{{ data.department.name }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+
+                    <select id="trackFilter" onchange="filterSubjects()"
+                        class="input-field py-1 text-sm w-full md:w-48">
+                        <option value="">Toutes les filières</option>
+                        {% set trks = [] %}
+                        {% for data in subjects_data %}
+                        {% if data.track.id not in trks %}
+                        {% set _ = trks.append(data.track.id) %}
+                        <option value="{{ data.track.id }}" data-dept="{{ data.department.id }}">
+                            {{ data.track.name }}
+                        </option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+
+                    <button onclick="resetFilters()" class="text-gray-500 hover:text-primary text-sm">
+                        <i class="fas fa-sync-alt mr-1"></i>Reset
+                    </button>
+                </div>
             </div>
+
             <div class="table-container">
                 <table class="data-table">
                     <thead>
@@ -120,21 +153,31 @@
                             <th>Matière</th>
                             <th>Département</th>
                             <th>Filière</th>
+                            <th>Année</th>
                             <th>Étudiants</th>
                             <th>Séances</th>
                             <th>Taux Présence</th>
-                            <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="subjectsTableBody">
                         {% for data in subjects_data %}
-                        <tr>
-                            <td class="font-medium text-gray-800">{{ data.subject.name }}</td>
+                        <tr class="subject-row group hover:bg-gray-50 transition-colors"
+                            data-dept-id="{{ data.department.id }}" data-track-id="{{ data.track.id }}">
+                            <td class="font-medium text-gray-900 transition-colors">
+                                <a href="{{ url_for('admin.subject_statistics', id=data.subject.id) }}"
+                                    class="block w-full h-full hover:text-primary">
+                                    {{ data.subject.name }}
+                                </a>
+                            </td>
                             <td class="text-gray-600">{{ data.department.name }}</td>
                             <td>
                                 <span class="badge badge-secondary">{{ data.track.name }}</span>
                             </td>
-                            <td>{{ data.students_count }}</td>
+                            <td class="text-xs text-gray-500">
+                                {{ data.subject.semester.academic_year.name }}
+                                ({{ data.subject.semester.name }})
+                            </td>
+                            <td class="font-semibold">{{ data.students_count }}</td>
                             <td>{{ data.courses_count }}</td>
                             <td>
                                 <div class="flex items-center">
@@ -147,24 +190,80 @@
                                     <span class="text-sm font-medium">{{ data.attendance_rate }}%</span>
                                 </div>
                             </td>
-                            <td>
-                                <a href="{{ url_for('admin.subject_statistics', id=data.subject.id) }}"
-                                    class="btn-sm btn-secondary text-xs">
-                                    <i class="fas fa-chart-bar mr-1"></i>Détails
-                                </a>
-                            </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="6" class="text-center text-gray-500 py-8">
+                            <td colspan="7" class="text-center text-gray-500 py-8">
                                 Aucune matière trouvée
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
+                <div id="noResultsMsg" class="hidden text-center py-8 text-gray-500 italic">
+                    Aucune matière ne correspond aux critères sélectionnés.
+                </div>
             </div>
         </div>
+
+        <script>
+            function filterSubjects() {
+                const deptId = document.getElementById('deptFilter').value;
+                const trackId = document.getElementById('trackFilter').value;
+                const rows = document.querySelectorAll('.subject-row');
+                let visibleCount = 0;
+
+                // Optional: Filter Track Dropdown based on Dept
+                const trackOptions = document.querySelectorAll('#trackFilter option[data-dept]');
+                if (deptId) {
+                    trackOptions.forEach(opt => {
+                        if (opt.getAttribute('data-dept') === deptId) {
+                            opt.style.display = '';
+                        } else {
+                            opt.style.display = 'none';
+                        }
+                    });
+                    // If current track doesn't belong to selected dept, reset track
+                    const currentTrackOpt = document.querySelector(`#trackFilter option[value="${trackId}"]`);
+                    if (currentTrackOpt && currentTrackOpt.getAttribute('data-dept') !== deptId) {
+                        document.getElementById('trackFilter').value = "";
+                    }
+                } else {
+                    trackOptions.forEach(opt => opt.style.display = '');
+                }
+
+
+                rows.forEach(row => {
+                    const rowDept = row.getAttribute('data-dept-id');
+                    const rowTrack = row.getAttribute('data-track-id');
+
+                    let show = true;
+                    if (deptId && rowDept !== deptId) show = false;
+                    // If filtering by dept, track must also match if selected
+                    if (trackId && rowTrack !== trackId) show = false;
+
+                    if (show) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                const noRes = document.getElementById('noResultsMsg');
+                if (visibleCount === 0) {
+                    noRes.classList.remove('hidden');
+                } else {
+                    noRes.classList.add('hidden');
+                }
+            }
+
+            function resetFilters() {
+                document.getElementById('deptFilter').value = "";
+                document.getElementById('trackFilter').value = "";
+                filterSubjects();
+            }
+        </script>
     </main>
 </div>
 {% endblock %}

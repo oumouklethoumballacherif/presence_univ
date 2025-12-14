@@ -5,7 +5,8 @@
 {% block body %}
 <div class="flex min-h-screen">
     <!-- Sidebar -->
-    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
+    <aside
+        class="sidebar fixed inset-y-0 left-0 z-50 w-64 gradient-bg p-6 transition-transform duration-300 transform -translate-x-full md:translate-x-0">
         <div class="mb-8">
             <div class="flex items-center space-x-3">
                 <div class="bg-white p-2 rounded-lg">
@@ -41,77 +42,123 @@
         </div>
     </aside>
 
+    <!-- Overlay for mobile -->
+    <div class="md:hidden fixed inset-0 bg-black/50 z-40 hidden sidebar-overlay"
+        onclick="document.querySelector('.sidebar').classList.remove('open'); this.classList.add('hidden');"></div>
+
+    <style>
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sidebar.open+.sidebar-overlay {
+            display: block;
+        }
+    </style>
+
     <!-- Main Content -->
-    <main class="flex-1 ml-64 p-8">
-        <div class="flex items-center justify-between mb-8">
-            <div>
-                <h1 class="text-3xl font-bold text-primary">Mes Matières</h1>
-                <p class="text-gray-500">Suivi de présence par semestre</p>
+    <main class="flex-1 md:ml-64 transition-all duration-300 min-h-screen bg-gray-50">
+        <!-- Mobile Header -->
+        <div class="md:hidden bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-30">
+            <div class="flex items-center gap-2">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-8">
+                <span class="font-bold text-primary">UIR Présence</span>
             </div>
-            <a href="{{ url_for('student.scan') }}" class="btn-primary">
-                <i class="fas fa-qrcode mr-2"></i>Scanner QR Code
-            </a>
+            <button
+                onclick="document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('hidden');"
+                class="p-2 text-gray-600 rounded-md hover:bg-gray-100 focus:outline-none">
+                <i class="fas fa-bars fa-lg"></i>
+            </button>
         </div>
 
-        {% for track_data in tracks_data %}
-        <div class="mb-8">
-            <h2 class="text-xl font-semibold text-primary mb-4">
-                <i class="fas fa-graduation-cap mr-2"></i>{{ track_data.track.name }}
-            </h2>
+        <div class="p-4 md:p-8">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div>
+                    <h1 class="text-3xl font-bold text-primary">Mes Matières</h1>
+                    <p class="text-gray-500">Suivi de présence par semestre</p>
+                </div>
+                <a href="{{ url_for('student.scan') }}" class="btn-primary w-full md:w-auto text-center">
+                    <i class="fas fa-qrcode mr-2"></i>Scanner QR Code
+                </a>
+            </div>
 
-            {% for year_data in track_data.years %}
-            {% for semester_data in year_data.semesters %}
-            {% if semester_data.subjects %}
-            <div class="mb-6">
-                <h3 class="text-lg font-medium text-secondary mb-3">
-                    {{ year_data.year.name }} - {{ semester_data.semester.name }}
-                </h3>
+            {% for track_data in tracks_data %}
+            <div class="mb-8">
+                <h2 class="text-xl font-semibold text-primary mb-4">
+                    <i class="fas fa-graduation-cap mr-2"></i>{{ track_data.track.name }}
+                </h2>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {% for item in semester_data.subjects %}
-                    <a href="{{ url_for('student.subject_detail', id=item.subject.id) }}"
-                        class="card p-5 hover:shadow-lg transition-shadow">
-                        <div class="flex items-start justify-between mb-3">
-                            <div>
-                                <span class="badge badge-primary">{{ item.subject.code }}</span>
-                                <h4 class="font-semibold text-gray-800 mt-2">{{ item.subject.name }}</h4>
+                {% if track_data.status == 'completed' %}
+                <div class="card p-12 text-center bg-green-50/50 border border-green-100">
+                    <div class="mb-4">
+                        <i class="fas fa-certificate text-6xl text-green-500"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Cursus Terminé</h3>
+                    <p class="text-gray-600">
+                        Félicitations ! Vous avez complété toutes les années de cette filière.
+                    </p>
+                    {% if track_data.track.level == 'licence' %}
+                    <p class="text-sm text-gray-500 mt-4">Vous pouvez contacter l'administration pour votre diplôme.</p>
+                    {% endif %}
+                </div>
+                {% else %}
+
+                {% for year_data in track_data.years %}
+                {% for semester_data in year_data.semesters %}
+                {% if semester_data.subjects %}
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-secondary mb-3">
+                        {{ year_data.year.name }} - {{ semester_data.semester.name }}
+                    </h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {% for item in semester_data.subjects %}
+                        <a href="{{ url_for('student.subject_detail', id=item.subject.id) }}"
+                            class="card p-5 hover:shadow-lg transition-shadow">
+                            <div class="flex items-start justify-between mb-3">
+                                <div>
+                                    <span class="badge badge-primary">{{ item.subject.code }}</span>
+                                    <h4 class="font-semibold text-gray-800 mt-2">{{ item.subject.name }}</h4>
+                                </div>
+                                {% if item.is_rattrapage %}
+                                <span class="badge badge-danger">Rattrapage</span>
+                                {% endif %}
                             </div>
-                            {% if item.is_rattrapage %}
-                            <span class="badge badge-danger">Rattrapage</span>
-                            {% endif %}
-                        </div>
 
-                        <div class="flex items-center justify-between text-sm text-gray-600 mb-3">
-                            <span><i class="fas fa-check-circle text-green-500 mr-1"></i>{{ item.presences }}
-                                présences</span>
-                            <span><i class="fas fa-calendar text-gray-400 mr-1"></i>{{ item.completed_sessions }}
-                                séances</span>
-                        </div>
+                            <div class="flex items-center justify-between text-sm text-gray-600 mb-3">
+                                <span><i class="fas fa-check-circle text-green-500 mr-1"></i>{{ item.presences }}
+                                    présences</span>
+                                <span><i class="fas fa-calendar text-gray-400 mr-1"></i>{{ item.completed_sessions }}
+                                    séances</span>
+                            </div>
 
-                        <div class="flex items-center justify-between">
-                            <span class="text-2xl font-bold 
+                            <div class="flex items-center justify-between">
+                                <span class="text-2xl font-bold 
                                 {% if item.grade >= 14 %}text-green-600
                                 {% elif item.grade >= 10 %}text-yellow-600
                                 {% else %}text-red-600{% endif %}">
-                                {{ item.grade }}/20
-                            </span>
-                            <span class="text-primary text-sm">Voir détails <i
-                                    class="fas fa-arrow-right ml-1"></i></span>
-                        </div>
-                    </a>
-                    {% endfor %}
+                                    {{ item.grade }}/20
+                                </span>
+                                <span class="text-primary text-sm">Voir détails <i
+                                        class="fas fa-arrow-right ml-1"></i></span>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
                 </div>
+                {% endif %}
+                {% endfor %}
+                {% endfor %}
+
+                {% endif %} <!-- End existing check -->
             </div>
-            {% endif %}
-            {% endfor %}
+            {% else %}
+            <div class="card p-12 text-center">
+                <i class="fas fa-book-open text-6xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">Vous n'êtes inscrit à aucune filière.</p>
+            </div>
             {% endfor %}
         </div>
-        {% else %}
-        <div class="card p-12 text-center">
-            <i class="fas fa-book-open text-6xl text-gray-300 mb-4"></i>
-            <p class="text-gray-500">Vous n'êtes inscrit à aucune filière.</p>
-        </div>
-        {% endfor %}
     </main>
 </div>
 {% endblock %}

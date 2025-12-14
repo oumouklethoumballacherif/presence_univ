@@ -4,15 +4,8 @@
 
 {% block body %}
 <div class="flex min-h-screen">
-    <aside class="sidebar w-64 gradient-bg p-6 fixed h-full z-40">
-        <div class="mb-8">
-            <div class="flex items-center space-x-3">
-                <div class="bg-white p-2 rounded-lg">
-                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="UIR" class="h-10">
-                </div>
-            </div>
-        </div>
-    </aside>
+    <!-- Sidebar -->
+    {% include "teacher/sidebar.html" %}
 
     <main class="flex-1 ml-64 p-8">
         <div class="mb-8">
@@ -30,9 +23,10 @@
                 <div class="space-y-6">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Code *</label>
-                            <input type="text" name="code" required class="input-field"
-                                value="{{ subject.code if subject else '' }}" placeholder="Ex: PROG101">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Code</label>
+                            <input type="text" name="code" class="input-field"
+                                value="{{ subject.code if subject else '' }}"
+                                placeholder="Laisser vide pour auto-générer (Ex: PROG101)">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Nom *</label>

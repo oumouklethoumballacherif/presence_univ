@@ -35,6 +35,11 @@
             class="sidebar-link {% if 'statistics' in request.endpoint %}active{% endif %}">
             <i class="fas fa-chart-bar"></i>Statistiques
         </a>
+
+        <a href="{{ url_for('admin.close_academic_year') }}"
+            class="sidebar-link text-red-300 hover:text-red-100 {% if 'close_academic_year' in request.endpoint %}active{% endif %}">
+            <i class="fas fa-flag-checkered"></i>Clôture Année
+        </a>
     </nav>
 
     <div class="absolute bottom-6 left-6 right-6">

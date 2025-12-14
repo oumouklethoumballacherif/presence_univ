@@ -283,9 +283,10 @@ def course_detail(id):
         flash('Accès non autorisé.', 'danger')
         return redirect(url_for('teacher.dashboard'))
     
-    # Get track students
+    # Get track students filtered by current year level
     track = course.subject.semester.academic_year.track
-    students = track.students
+    academic_year_id = course.subject.semester.academic_year_id
+    students = [s for s in track.students if s.current_year_id == academic_year_id]
     
     # Get attendance data
     attendance_data = []
@@ -330,9 +331,14 @@ def start_course(id):
         flash('Cette séance a déjà été démarrée ou terminée.', 'warning')
         return redirect(url_for('teacher.course_detail', id=id))
     
-    # Create attendance records for all students
+    # Create attendance records for all students currently in this year
     track = course.subject.semester.academic_year.track
-    for student in track.students:
+    academic_year_id = course.subject.semester.academic_year_id
+    
+    # Filter students who are actually in this academic year
+    relevant_students = [s for s in track.students if s.current_year_id == academic_year_id]
+
+    for student in relevant_students:
         # Check if record already exists to avoid IntegrityError (e.g. if manually marked before start)
         existing_attendance = Attendance.query.filter_by(
             course_id=course.id,
@@ -398,7 +404,8 @@ def qr_display(id):
     
     # Count students: total and present
     track = course.subject.semester.academic_year.track
-    total_students = len(track.students)
+    academic_year_id = course.subject.semester.academic_year_id
+    total_students = len([s for s in track.students if s.current_year_id == academic_year_id])
     present_students = Attendance.query.filter_by(
         course_id=course.id,
         status='present'
@@ -632,14 +639,17 @@ def subject_attendance(id):
     """View attendance for a subject"""
     subject = Subject.query.get_or_404(id)
     
-    # Verify teacher is assigned
-    assignment = TeacherSubjectAssignment.query.filter_by(
+    # Permission Check: Assigned Teacher OR Track Head
+    is_assigned = TeacherSubjectAssignment.query.filter_by(
         teacher_id=current_user.id,
         subject_id=id
     ).first()
     
-    if not assignment:
-        flash('Vous n\'êtes pas assigné à cette matière.', 'danger')
+    is_track_head = (current_user.is_track_head and 
+                    current_user.headed_track.id == subject.semester.academic_year.track_id)
+    
+    if not is_assigned and not is_track_head:
+        flash('Accès non autorisé.', 'danger')
         return redirect(url_for('teacher.dashboard'))
     
     # Get completed courses
@@ -650,9 +660,13 @@ def subject_attendance(id):
     
     # Get students and their attendance
     track = subject.semester.academic_year.track
+    academic_year_id = subject.semester.academic_year_id
     students_data = []
     
-    for student in track.students:
+    # Filter students by current year level
+    relevant_students = [s for s in track.students if s.current_year_id == academic_year_id]
+    
+    for student in relevant_students:
         student_attendance = {
             'student': student,
             'courses': []
@@ -1044,10 +1058,33 @@ def create_subject(semester_id):
         total_td = request.form.get('total_td', type=int, default=0)
         total_tp = request.form.get('total_tp', type=int, default=0)
         
-        if not name or not code:
-            flash('Le nom et le code sont obligatoires.', 'danger')
+        if not name:
+            flash('Le nom est obligatoire.', 'danger')
             return render_template('teacher/subject_form.html', semester=semester, track=track)
         
+        # Auto-generate code if empty
+        if not code:
+            # 1. Track Abbreviation
+            track_words = track.name.upper().split()
+            abbrev = track_words[0][:4] if track_words else 'GENI'
+            for word in track_words:
+                if word not in ['GENIE', 'MASTER', 'LICENCE', 'DOCTORAT']:
+                    abbrev = word[:4]
+                    break
+            
+            # 2. Level
+            level_initial = track.level[0].upper() if track.level else 'L'
+            year_order = semester.academic_year.order
+            level_code = f"{level_initial}{year_order}"
+            
+            # 3. Number
+            existing_count = 0
+            for sem in semester.academic_year.semesters:
+                existing_count += len(sem.subjects)
+            number = existing_count + 1
+            
+            code = f"{abbrev}-{level_code}-{number:02d}"
+
         subject = Subject(
             name=name,
             code=code,
@@ -1086,10 +1123,14 @@ def edit_subject(id):
         total_td = request.form.get('total_td', type=int, default=0)
         total_tp = request.form.get('total_tp', type=int, default=0)
         
-        if not name or not code:
-            flash('Le nom et le code sont obligatoires.', 'danger')
+        if not name:
+            flash('Le nom est obligatoire.', 'danger')
             return render_template('teacher/subject_form.html', subject=subject, semester=subject.semester, track=track)
         
+        # Keep existing code if empty
+        if not code:
+            code = subject.code
+
         subject.name = name
         subject.code = code
         subject.description = description
@@ -1119,6 +1160,15 @@ def assign_subject_teacher(id):
     # Get teachers from same department
     teachers = User.query.filter_by(role='teacher', department_id=track.department_id).order_by(User.last_name).all()
     
+    # Check for edit mode
+    edit_teacher_id = request.args.get('edit_teacher_id', type=int)
+    current_assignment = None
+    if edit_teacher_id:
+        current_assignment = TeacherSubjectAssignment.query.filter_by(
+            teacher_id=edit_teacher_id,
+            subject_id=id
+        ).first()
+
     if request.method == 'POST':
         teacher_id = request.form.get('teacher_id', type=int)
         teaches_cm = 'teaches_cm' in request.form
@@ -1127,7 +1177,7 @@ def assign_subject_teacher(id):
         
         if not teacher_id:
             flash('Veuillez sélectionner un enseignant.', 'danger')
-            return render_template('teacher/assign_subject.html', subject=subject, teachers=teachers, track=track)
+            return render_template('teacher/assign_subject.html', subject=subject, teachers=teachers, track=track, current_assignment=current_assignment)
         
         # Check if assignment exists
         assignment = TeacherSubjectAssignment.query.filter_by(
@@ -1151,9 +1201,62 @@ def assign_subject_teacher(id):
         
         db.session.commit()
         flash('Enseignant assigné avec succès!', 'success')
+        # Redirect simply clears the query params
+        return redirect(url_for('teacher.assign_subject_teacher', id=id))
+    
+    return render_template('teacher/assign_subject.html', subject=subject, teachers=teachers, track=track, current_assignment=current_assignment)
+
+
+@teacher_bp.route('/track/subject/unassign/<int:subject_id>/<int:teacher_id>', methods=['POST'])
+@login_required
+@track_head_required
+def unassign_subject_teacher(subject_id, teacher_id):
+    """Unassign teacher from subject"""
+    subject = Subject.query.get_or_404(subject_id)
+    track = current_user.headed_track
+    
+    if subject.semester.academic_year.track_id != track.id:
+        flash('Accès non autorisé.', 'danger')
         return redirect(url_for('teacher.track_management'))
     
-    return render_template('teacher/assign_subject.html', subject=subject, teachers=teachers, track=track)
+    assignment = TeacherSubjectAssignment.query.filter_by(
+        subject_id=subject_id,
+        teacher_id=teacher_id
+    ).first_or_404()
+    
+    db.session.delete(assignment)
+    db.session.commit()
+    
+    flash('Enseignant retiré avec succès.', 'success')
+    return redirect(url_for('teacher.assign_subject_teacher', id=subject_id))
+
+
+@teacher_bp.route('/track/subject/unassign_bulk/<int:subject_id>', methods=['POST'])
+@login_required
+@track_head_required
+def unassign_subject_teachers_bulk(subject_id):
+    """Unassign multiple teachers from subject"""
+    subject = Subject.query.get_or_404(subject_id)
+    track = current_user.headed_track
+    
+    if subject.semester.academic_year.track_id != track.id:
+        flash('Accès non autorisé.', 'danger')
+        return redirect(url_for('teacher.track_management'))
+    
+    teacher_ids = request.form.getlist('teacher_ids')
+    
+    if teacher_ids:
+        TeacherSubjectAssignment.query.filter(
+            TeacherSubjectAssignment.subject_id == subject_id,
+            TeacherSubjectAssignment.teacher_id.in_(teacher_ids)
+        ).delete(synchronize_session=False)
+        
+        db.session.commit()
+        flash(f'{len(teacher_ids)} enseignant(s) retiré(s) avec succès.', 'success')
+    else:
+        flash('Aucun enseignant sélectionné.', 'warning')
+        
+    return redirect(url_for('teacher.assign_subject_teacher', id=subject_id))
 
 
 # ==================== STUDENT MANAGEMENT ====================
@@ -1164,9 +1267,21 @@ def assign_subject_teacher(id):
 def track_students():
     """View students in track"""
     track = current_user.headed_track
-    students = track.students
+    search = request.args.get('search', '').strip()
     
-    return render_template('teacher/track_students.html', track=track, students=students)
+    query = User.query.filter(User.enrolled_tracks.any(id=track.id))
+    
+    if search:
+        query = query.filter(
+            (User.first_name.ilike(f'%{search}%')) |
+            (User.last_name.ilike(f'%{search}%')) |
+            (User.email.ilike(f'%{search}%')) |
+            (User.matricule.ilike(f'%{search}%'))
+        )
+        
+    students = query.order_by(User.last_name, User.first_name).all()
+    
+    return render_template('teacher/track_students.html', track=track, students=students, search=search)
 
 
 @teacher_bp.route('/track/student/create', methods=['GET', 'POST'])
@@ -1202,6 +1317,11 @@ def create_student():
             role='student'
         )
         student.enrolled_tracks.append(track)
+        
+        # Assign to first academic year by default
+        first_year = AcademicYear.query.filter_by(track_id=track.id).order_by(AcademicYear.order).first()
+        if first_year:
+            student.current_year = first_year
         
         db.session.add(student)
         db.session.commit()
@@ -1296,55 +1416,221 @@ def import_students():
     return render_template('teacher/import_students.html', track=track)
 
 
+@teacher_bp.route('/track/student/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+@track_head_required
+def edit_student(id):
+    """Edit a student"""
+    student = User.query.get_or_404(id)
+    track = current_user.headed_track
+    
+    # Security check
+    if track not in student.enrolled_tracks:
+        flash('Étudiant non trouvé dans cette filière.', 'danger')
+        return redirect(url_for('teacher.track_students'))
+        
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        first_name = request.form.get('first_name', '').strip()
+        last_name = request.form.get('last_name', '').strip()
+        matricule = request.form.get('matricule', '').strip()
+        
+        if not email or not first_name or not last_name:
+            flash('Tous les champs obligatoires doivent être remplis.', 'danger')
+            return render_template('teacher/student_form.html', student=student, track=track)
+        
+        # Check email uniqueness
+        existing = User.query.filter_by(email=email).first()
+        if existing and existing.id != student.id:
+            flash('Un utilisateur avec cet email existe déjà.', 'danger')
+            return render_template('teacher/student_form.html', student=student, track=track)
+            
+        # Check matricule uniqueness
+        if matricule:
+            existing_mat = User.query.filter_by(matricule=matricule).first()
+            if existing_mat and existing_mat.id != student.id:
+                flash('Un utilisateur avec ce matricule existe déjà.', 'danger')
+                return render_template('teacher/student_form.html', student=student, track=track)
+        
+        student.email = email
+        student.first_name = first_name
+        student.last_name = last_name
+        student.matricule = matricule if matricule else None
+        
+        db.session.commit()
+        flash('Informations étudiant mises à jour.', 'success')
+        return redirect(url_for('teacher.track_students'))
+        
+    return render_template('teacher/student_form.html', student=student, track=track)
+
+
+@teacher_bp.route('/track/students/delete_bulk', methods=['POST'])
+@login_required
+@track_head_required
+def delete_students_bulk():
+    """Delete multiple students"""
+    track = current_user.headed_track
+    student_ids = request.form.getlist('student_ids')
+    
+    if student_ids:
+        # Get students to delete
+        students = User.query.filter(
+            User.id.in_(student_ids),
+            User.role == 'student'
+        ).all()
+        
+        deleted_count = 0
+        for student in students:
+            # Verify student is in this track
+            if track in student.enrolled_tracks:
+                db.session.delete(student)
+                deleted_count += 1
+                
+        db.session.commit()
+        
+        if deleted_count > 0:
+            flash(f'{deleted_count} étudiant(s) supprimé(s).', 'success')
+        else:
+            flash('Aucun étudiant supprimé.', 'warning')
+    else:
+        flash('Aucun étudiant sélectionné.', 'warning')
+        
+    return redirect(url_for('teacher.track_students'))
+
+
 # ==================== TRACK STATISTICS ====================
 
 @teacher_bp.route('/track/statistics')
 @login_required
-@track_head_required
+@teacher_required
 def track_statistics():
-    """View track-wide statistics"""
-    track = current_user.headed_track
+    """View track-wide statistics and external subject stats"""
+    # Permission Check
+    if not current_user.is_track_head and not current_user.is_dept_head:
+        flash('Accès non autorisé. Rôle de chef de filière ou département requis.', 'danger')
+        return redirect(url_for('teacher.dashboard'))
+
+    # 1. Identify all relevant subjects
+    track_subjects = set()
     
-    # Get all subjects in track
-    subjects = []
-    for year in track.academic_years:
-        for semester in year.semesters:
-            for subject in semester.subjects:
-                subjects.append(subject)
+    # Scope A: Department Head (See EVERYTHING in Dept)
+    if current_user.is_dept_head:
+        dept = current_user.headed_department
+        if dept:
+            tracks = Track.query.filter_by(department_id=dept.id).all()
+            for t in tracks:
+                for year in t.academic_years:
+                    for semester in year.semesters:
+                        for subject in semester.subjects:
+                            track_subjects.add(subject)
+                            
+    # Scope B: Track Head (See their Track)
+    if current_user.is_track_head:
+        track = current_user.headed_track
+        if track:
+            for year in track.academic_years:
+                for semester in year.semesters:
+                    for subject in semester.subjects:
+                        track_subjects.add(subject)
+                
+    # C. Subjects I teach (always include)
+    my_assignments = TeacherSubjectAssignment.query.filter_by(teacher_id=current_user.id).all()
+    my_subjects = set(a.subject for a in my_assignments)
     
-    # Calculate stats for each student
+    # Merge unique
+    all_subjects = list(track_subjects.union(my_subjects))
+    all_subjects.sort(key=lambda x: x.name)
+    
+    # Define School Year Start (Assuming Sept 1st)
+    now = datetime.utcnow()
+    start_year = now.year if now.month >= 9 else now.year - 1
+    school_year_start = datetime(start_year, 9, 1)
+
+    # 2. Calculate Stats per Subject
+    subjects_stats_data = []
+    
+    for subject in all_subjects:
+        # Get completed courses for CURRENT SCHOOL YEAR
+        completed_courses = Course.query.filter(
+            Course.subject_id == subject.id, 
+            Course.status == 'completed',
+            Course.scheduled_date >= school_year_start
+        ).all()
+        sessions_count = len(completed_courses)
+        
+        subj_track = subject.semester.academic_year.track
+        subj_year_id = subject.semester.academic_year_id
+        
+        # Filter students who are CURRENTLY in this level (L1, L2, etc.)
+        relevant_students = [s for s in subj_track.students if s.current_year_id == subj_year_id]
+        students_count = len(relevant_students)
+        
+        if sessions_count == 0 or students_count == 0:
+            rate = 0
+        else:
+            # Query Logic for Rate
+            # We want: Total Present records / Total Possible records
+            total_possible = students_count * sessions_count
+            
+            # Count present records ONLY for current year courses
+            total_present = Attendance.query.join(Course).filter(
+                Course.subject_id == subject.id,
+                Course.status == 'completed',
+                Course.scheduled_date >= school_year_start,
+                Attendance.status == 'present'
+            ).count()
+            
+            rate = (total_present / total_possible) * 100
+        
+        subjects_stats_data.append({
+            'subject': subject,
+            'sessions_count': sessions_count,
+            'students_count': students_count,
+            'rate': round(rate, 1),
+            'track_name': subj_track.name,
+            'is_in_my_track': subject in track_subjects,
+            'is_taught_by_me': subject in my_subjects
+        })
+    
+    # 3. Calculate Stats per Student
+    # Shown only if the user heads a specific track
     students_stats = []
-    for student in track.students:
-        student_data = {
-            'student': student,
-            'subjects': [],
-            'total_grade': 0,
-            'rattrapage_count': 0
-        }
-        
-        total_grade = 0
-        subject_count = 0
-        
-        for subject in subjects:
-            is_rattrapage, stats = calculate_rattrapage_status(student.id, subject.id)
-            grade = calculate_attendance_grade(student.id, subject.id)
+    focus_track = current_user.headed_track if current_user.is_track_head else None
+    
+    if focus_track:
+        # Get subjects specifically for this track (re-filtered to be safe)
+        focus_track_subjects = []
+        for year in focus_track.academic_years:
+            for semester in year.semesters:
+                for subject in semester.subjects:
+                    focus_track_subjects.append(subject)
+    
+        for student in focus_track.students:
+            student_data = {
+                'student': student,
+                'total_grade': 0,
+                'rattrapage_count': 0
+            }
             
-            student_data['subjects'].append({
-                'subject': subject,
-                'grade': grade,
-                'is_rattrapage': is_rattrapage
-            })
+            total_grade = 0
+            subject_count = 0
             
-            total_grade += grade
-            subject_count += 1
+            for subject in focus_track_subjects:
+                is_rattrapage, stats = calculate_rattrapage_status(student.id, subject.id)
+                grade = calculate_attendance_grade(student.id, subject.id)
+                
+                total_grade += grade
+                subject_count += 1
+                
+                if is_rattrapage:
+                    student_data['rattrapage_count'] += 1
             
-            if is_rattrapage:
-                student_data['rattrapage_count'] += 1
-        
-        student_data['total_grade'] = round(total_grade / subject_count, 2) if subject_count > 0 else 20
-        students_stats.append(student_data)
+            student_data['total_grade'] = round(total_grade / subject_count, 2) if subject_count > 0 else 20
+            students_stats.append(student_data)
+            
+        students_stats.sort(key=lambda x: (-x['rattrapage_count'], x['total_grade']))
     
     return render_template('teacher/track_statistics.html',
-                          track=track,
-                          subjects=subjects,
+                          track=focus_track,
+                          subjects_stats=subjects_stats_data,
                           students_stats=students_stats)

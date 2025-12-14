@@ -12,9 +12,9 @@ connection = pymysql.connect(
 try:
     with connection.cursor() as cursor:
         try:
-            cursor.execute("ALTER TABLE users ADD COLUMN current_year_id INT")
-            cursor.execute("ALTER TABLE users ADD CONSTRAINT fk_users_current_year FOREIGN KEY (current_year_id) REFERENCES academic_years(id)")
-            print("✓ Added current_year_id column to users table")
+            cursor.execute("ALTER TABLE tracks ADD COLUMN code VARCHAR(20)")
+            # cursor.execute("UPDATE tracks SET code = CONCAT('TR', id) WHERE code IS NULL") # Optional: Populate existing
+            print("✓ Added code column to tracks table")
         except pymysql.err.OperationalError as e:
             if '1060' in str(e):  # Column already exists
                 print("- current_year_id column already exists")
