@@ -129,72 +129,7 @@
             }
         </script>
 
-        <!-- Section 2: Synthèse Étudiants de ma Filière -->
-        {% if track %}
-        <div class="mb-6">
-            <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                <i class="fas fa-users mr-2 text-primary"></i>Synthèse Étudiants ({{ track.name }})
-            </h2>
-            <div class="card">
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Étudiant</th>
-                                <th>Note Globale /20</th>
-                                <th>Rattrapages</th>
-                                <th>Statut</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for data in students_stats %}
-                            <tr class="hover:bg-gray-50">
-                                <td>
-                                    <div class="flex items-center space-x-3">
-                                        <div
-                                            class="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center">
-                                            <i class="fas fa-user-graduate text-accent"></i>
-                                        </div>
-                                        <span class="font-medium">{{ data.student.full_name }}</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="text-2xl font-bold 
-                                        {% if data.total_grade >= 14 %}text-green-600
-                                        {% elif data.total_grade >= 10 %}text-yellow-600
-                                        {% else %}text-red-600{% endif %}">
-                                        {{ data.total_grade }}
-                                    </span>
-                                </td>
-                                <td>
-                                    {% if data.rattrapage_count > 0 %}
-                                    <span class="badge badge-danger">{{ data.rattrapage_count }} matière(s)</span>
-                                    {% else %}
-                                    <span class="badge badge-success">Aucun</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if data.rattrapage_count == 0 %}
-                                    <span class="text-green-600"><i class="fas fa-check-circle mr-1"></i>Normal</span>
-                                    {% else %}
-                                    <span class="text-red-600"><i
-                                            class="fas fa-exclamation-triangle mr-1"></i>Rattrapage</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="4" class="text-center text-gray-500 py-8">
-                                    Aucun étudiant inscrit.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        {% endif %}
+
     </main>
 </div>
 {% endblock %}

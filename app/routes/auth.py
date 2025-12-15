@@ -27,7 +27,7 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
-        remember = request.form.get('remember', False)
+        remember = True if request.form.get('remember') else False
         
         user = User.query.filter_by(email=email).first()
         

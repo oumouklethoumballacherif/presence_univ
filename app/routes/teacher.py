@@ -1594,28 +1594,51 @@ def track_statistics():
     
     # 3. Calculate Stats per Student
     # Shown only if the user heads a specific track
+    # 3. Calculate Stats per Student
     students_stats = []
+    target_tracks = {}
     focus_track = current_user.headed_track if current_user.is_track_head else None
     
-    if focus_track:
-        # Get subjects specifically for this track (re-filtered to be safe)
-        focus_track_subjects = []
-        for year in focus_track.academic_years:
+    if current_user.is_track_head and current_user.headed_track:
+        target_tracks[current_user.headed_track.id] = current_user.headed_track
+        
+    if current_user.is_dept_head and current_user.headed_department:
+        dept_tracks = Track.query.filter_by(department_id=current_user.headed_department.id).all()
+        for t in dept_tracks:
+            target_tracks[t.id] = t
+            
+    # Iterate over each relevant track
+    for track in target_tracks.values():
+        # Get subjects specifically for this track
+        track_subjects = []
+        for year in track.academic_years:
             for semester in year.semesters:
                 for subject in semester.subjects:
-                    focus_track_subjects.append(subject)
+                    track_subjects.append(subject)
     
-        for student in focus_track.students:
+        for student in track.students:
             student_data = {
                 'student': student,
                 'total_grade': 0,
-                'rattrapage_count': 0
+                'rattrapage_count': 0,
+                'track_name': track.name,
+                'year_name': student.current_year.name if student.current_year else "Diplômé"
             }
             
             total_grade = 0
             subject_count = 0
             
-            for subject in focus_track_subjects:
+            for subject in track_subjects:
+                # Only count subjects that match the student's current year (if they have one)
+                # Optimization: filter track_subjects earlier or here?
+                # Actually, precise calculation:
+                # If student is L1, only L1 subjects count for their average/rattrapage?
+                # YES. Mixing L1 subjects for an L2 student is wrong.
+                
+                # Filter subject by student's year
+                if student.current_year_id and subject.semester.academic_year_id != student.current_year_id:
+                    continue
+                    
                 is_rattrapage, stats = calculate_rattrapage_status(student.id, subject.id)
                 grade = calculate_attendance_grade(student.id, subject.id)
                 
@@ -1628,7 +1651,7 @@ def track_statistics():
             student_data['total_grade'] = round(total_grade / subject_count, 2) if subject_count > 0 else 20
             students_stats.append(student_data)
             
-        students_stats.sort(key=lambda x: (-x['rattrapage_count'], x['total_grade']))
+    students_stats.sort(key=lambda x: (-x['rattrapage_count'], x['total_grade']))
     
     return render_template('teacher/track_statistics.html',
                           track=focus_track,
