@@ -27,6 +27,7 @@
             {% endif %}
 
             <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                 <div class="space-y-6">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -48,8 +49,8 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Matricule</label>
-                        <input type="text" name="matricule" class="input-field"
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Matricule *</label>
+                        <input type="text" name="matricule" required class="input-field"
                             value="{{ teacher.matricule if teacher else '' }}" placeholder="Ex: ENS001">
                     </div>
 

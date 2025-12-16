@@ -747,25 +747,40 @@ def create_track():
     
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
-        code = request.form.get('code', '').strip().upper()
+        level = request.form.get('level', 'licence')
         description = request.form.get('description', '').strip()
+        auto_generate = request.form.get('auto_generate') == 'on'
         
-        if not name or not code:
-            flash('Le nom et le code sont obligatoires.', 'danger')
+        if not name:
+            flash('Le nom est obligatoire.', 'danger')
             return render_template('teacher/track_form.html', department=dept)
         
-        if Track.query.filter_by(code=code, department_id=dept.id).first():
-            flash('Une filière avec ce code existe déjà dans ce département.', 'danger')
+        if Track.query.filter_by(name=name, department_id=dept.id).first():
+            flash('Une filière avec ce nom existe déjà dans ce département.', 'danger')
             return render_template('teacher/track_form.html', department=dept)
         
         track = Track(
             name=name,
-            code=code,
+            level=level,
             description=description,
             department_id=dept.id
         )
         db.session.add(track)
         db.session.commit()
+        
+        # Auto-generate academic structure if requested
+        if auto_generate:
+            structure = Track.get_academic_structure(level)
+            for i, (code, year_name) in enumerate(structure['years'], 1):
+                year = AcademicYear(name=year_name, order=i, track_id=track.id)
+                db.session.add(year)
+                db.session.commit()
+                
+                for j in range(1, structure['semesters_per_year'] + 1):
+                    sem_num = (i - 1) * structure['semesters_per_year'] + j
+                    semester = Semester(name=f'Semestre {sem_num}', order=j, academic_year_id=year.id)
+                    db.session.add(semester)
+            db.session.commit()
         
         flash(f'Filière "{name}" créée avec succès!', 'success')
         return redirect(url_for('teacher.department_management'))
@@ -1290,38 +1305,47 @@ def track_students():
 def create_student():
     """Create a new student"""
     track = current_user.headed_track
+    academic_years = AcademicYear.query.filter_by(track_id=track.id).order_by(AcademicYear.order).all()
     
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         first_name = request.form.get('first_name', '').strip()
         last_name = request.form.get('last_name', '').strip()
         matricule = request.form.get('matricule', '').strip()
+        year_id = request.form.get('academic_year_id', type=int)
         
-        if not email or not first_name or not last_name:
+        if not email or not first_name or not last_name or not matricule:
             flash('Tous les champs obligatoires doivent être remplis.', 'danger')
-            return render_template('teacher/student_form.html', track=track)
+            return render_template('teacher/student_form.html', track=track, academic_years=academic_years)
         
         if User.query.filter_by(email=email).first():
             flash('Un utilisateur avec cet email existe déjà.', 'danger')
-            return render_template('teacher/student_form.html', track=track)
+            return render_template('teacher/student_form.html', track=track, academic_years=academic_years)
         
-        if matricule and User.query.filter_by(matricule=matricule).first():
+        if User.query.filter_by(matricule=matricule).first():
             flash('Un utilisateur avec ce matricule existe déjà.', 'danger')
-            return render_template('teacher/student_form.html', track=track)
+            return render_template('teacher/student_form.html', track=track, academic_years=academic_years)
         
         student = User(
             email=email,
             first_name=first_name,
             last_name=last_name,
-            matricule=matricule if matricule else None,
+            matricule=matricule,
             role='student'
         )
         student.enrolled_tracks.append(track)
         
-        # Assign to first academic year by default
-        first_year = AcademicYear.query.filter_by(track_id=track.id).order_by(AcademicYear.order).first()
-        if first_year:
-            student.current_year = first_year
+        # Assign to selected academic year or default to first
+        if year_id:
+            year = AcademicYear.query.get(year_id)
+            if year and year.track_id == track.id:
+                student.current_year = year
+        
+        # Fallback if no year selected or invalid (though UI should prevent this)
+        if not student.current_year:
+            first_year = academic_years[0] if academic_years else None
+            if first_year:
+                student.current_year = first_year
         
         db.session.add(student)
         db.session.commit()
@@ -1336,7 +1360,7 @@ def create_student():
         
         return redirect(url_for('teacher.track_students'))
     
-    return render_template('teacher/student_form.html', track=track)
+    return render_template('teacher/student_form.html', track=track, academic_years=academic_years)
 
 
 @teacher_bp.route('/track/students/import', methods=['GET', 'POST'])
@@ -1423,6 +1447,7 @@ def edit_student(id):
     """Edit a student"""
     student = User.query.get_or_404(id)
     track = current_user.headed_track
+    academic_years = AcademicYear.query.filter_by(track_id=track.id).order_by(AcademicYear.order).all()
     
     # Security check
     if track not in student.enrolled_tracks:
@@ -1434,34 +1459,39 @@ def edit_student(id):
         first_name = request.form.get('first_name', '').strip()
         last_name = request.form.get('last_name', '').strip()
         matricule = request.form.get('matricule', '').strip()
+        year_id = request.form.get('academic_year_id', type=int)
         
-        if not email or not first_name or not last_name:
+        if not email or not first_name or not last_name or not matricule:
             flash('Tous les champs obligatoires doivent être remplis.', 'danger')
-            return render_template('teacher/student_form.html', student=student, track=track)
+            return render_template('teacher/student_form.html', student=student, track=track, academic_years=academic_years)
         
         # Check email uniqueness
         existing = User.query.filter_by(email=email).first()
         if existing and existing.id != student.id:
             flash('Un utilisateur avec cet email existe déjà.', 'danger')
-            return render_template('teacher/student_form.html', student=student, track=track)
+            return render_template('teacher/student_form.html', student=student, track=track, academic_years=academic_years)
             
         # Check matricule uniqueness
-        if matricule:
-            existing_mat = User.query.filter_by(matricule=matricule).first()
-            if existing_mat and existing_mat.id != student.id:
-                flash('Un utilisateur avec ce matricule existe déjà.', 'danger')
-                return render_template('teacher/student_form.html', student=student, track=track)
+        existing_mat = User.query.filter_by(matricule=matricule).first()
+        if existing_mat and existing_mat.id != student.id:
+            flash('Un utilisateur avec ce matricule existe déjà.', 'danger')
+            return render_template('teacher/student_form.html', student=student, track=track, academic_years=academic_years)
         
         student.email = email
         student.first_name = first_name
         student.last_name = last_name
-        student.matricule = matricule if matricule else None
+        student.matricule = matricule
+        
+        if year_id:
+            year = AcademicYear.query.get(year_id)
+            if year and year.track_id == track.id:
+                student.current_year = year
         
         db.session.commit()
         flash('Informations étudiant mises à jour.', 'success')
         return redirect(url_for('teacher.track_students'))
         
-    return render_template('teacher/student_form.html', student=student, track=track)
+    return render_template('teacher/student_form.html', student=student, track=track, academic_years=academic_years)
 
 
 @teacher_bp.route('/track/students/delete_bulk', methods=['POST'])

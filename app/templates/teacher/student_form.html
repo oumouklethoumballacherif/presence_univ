@@ -24,27 +24,44 @@
             </div>
 
             <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                 <div class="space-y-6">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Prénom *</label>
-                            <input type="text" name="first_name" required class="input-field">
+                            <input type="text" name="first_name" required class="input-field"
+                                value="{{ student.first_name if student else '' }}">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Nom *</label>
-                            <input type="text" name="last_name" required class="input-field">
+                            <input type="text" name="last_name" required class="input-field"
+                                value="{{ student.last_name if student else '' }}">
                         </div>
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Email institutionnel *</label>
-                        <input type="email" name="email" required class="input-field"
-                            placeholder="prenom.nom@uir.ac.ma">
+                        <input type="email" name="email" required class="input-field" placeholder="prenom.nom@uir.ac.ma"
+                            value="{{ student.email if student else '' }}">
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Matricule</label>
-                        <input type="text" name="matricule" class="input-field" placeholder="Ex: ETU001">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Année Académique *</label>
+                            <select name="academic_year_id" required class="input-field">
+                                {% for year in academic_years %}
+                                <option value="{{ year.id }}" {% if (student and student.current_year_id==year.id) or
+                                    (not student and loop.first) %}selected{% endif %}>
+                                    {{ year.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Matricule *</label>
+                            <input type="text" name="matricule" required class="input-field" placeholder="Ex: ETU001"
+                                value="{{ student.matricule if student and student.matricule else '' }}">
+                        </div>
                     </div>
 
                     <div class="flex justify-end space-x-4">

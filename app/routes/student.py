@@ -218,9 +218,16 @@ def record_attendance():
         return jsonify({'success': False, 'message': 'QR code expiré. Veuillez rescanner.'}), 400
     
     # Check if student is enrolled in the track
-    track = course.subject.semester.academic_year.track
+    # Check if student is enrolled in the track
+    year = course.subject.semester.academic_year
+    track = year.track
+    
     if track not in current_user.enrolled_tracks:
         return jsonify({'success': False, 'message': 'Vous n\'êtes pas inscrit à cette filière'}), 403
+        
+    # Check if student is in the correct academic year
+    if current_user.current_year_id != year.id:
+        return jsonify({'success': False, 'message': 'Cette séance ne correspond pas à votre année académique'}), 403
     
     # Get or create attendance record
     attendance = Attendance.query.filter_by(

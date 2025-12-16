@@ -99,6 +99,7 @@
                             <th>Email</th>
                             <th>Département</th>
                             <th>Rôle</th>
+                            <th>Statut</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -143,6 +144,17 @@
                                 {% endif %}
                                 {% if not teacher.is_dept_head and not teacher.is_track_head %}
                                 <span class="text-gray-400">Enseignant</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if teacher.password_hash %}
+                                <span class="badge bg-green-100 text-green-800 border border-green-200">
+                                    Actif
+                                </span>
+                                {% else %}
+                                <span class="badge bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                    En attente
+                                </span>
                                 {% endif %}
                             </td>
                         </tr>

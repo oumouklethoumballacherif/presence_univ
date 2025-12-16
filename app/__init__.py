@@ -1,11 +1,19 @@
 from flask import Flask
 from flask_login import LoginManager
 from flask_mail import Mail
+from flask_wtf.csrf import CSRFProtect
+from dotenv import load_dotenv
+import os
 from .models import db, User
 from .config import Config
+from datetime import datetime
+
+# Load environment variables
+load_dotenv()
 
 login_manager = LoginManager()
 mail = Mail()
+csrf = CSRFProtect()
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -15,10 +23,15 @@ def create_app(config_class=Config):
     db.init_app(app)
     login_manager.init_app(app)
     mail.init_app(app)
+    csrf.init_app(app)
     
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Veuillez vous connecter pour accéder à cette page.'
     login_manager.login_message_category = 'warning'
+    
+    @app.context_processor
+    def inject_now():
+        return {'now': datetime.utcnow}
     
     @login_manager.user_loader
     def load_user(user_id):

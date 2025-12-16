@@ -101,6 +101,7 @@
                             <th>Email</th>
                             <th>Filière(s)</th>
                             <th>Année</th>
+                            <th>Statut</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -138,6 +139,17 @@
                                 {% else %}
                                 <span class="badge bg-green-100 text-green-700 border border-green-200">
                                     <i class="fas fa-check-circle mr-1"></i>Diplômé
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if student.password_hash %}
+                                <span class="badge bg-green-100 text-green-800 border border-green-200">
+                                    Actif
+                                </span>
+                                {% else %}
+                                <span class="badge bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                    En attente
                                 </span>
                                 {% endif %}
                             </td>

@@ -17,6 +17,7 @@
         <!-- Login Card -->
         <div class="card p-8">
             <form method="POST" action="{{ url_for('auth.login') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                 <div class="space-y-6">
                     <!-- Email -->
                     <div>

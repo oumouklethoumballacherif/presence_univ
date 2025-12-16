@@ -20,25 +20,53 @@
 
         <div class="card p-8 max-w-2xl">
             <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                 <div class="space-y-6">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Code *</label>
-                            <input type="text" name="code" required class="input-field"
-                                value="{{ track.code if track else '' }}" placeholder="Ex: GI">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Nom *</label>
-                            <input type="text" name="name" required class="input-field"
-                                value="{{ track.name if track else '' }}" placeholder="Ex: Génie Informatique">
-                        </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nom *</label>
+                        <input type="text" name="name" required class="input-field"
+                            value="{{ track.name if track else '' }}" placeholder="Ex: Génie Informatique">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Niveau *</label>
+                        <select name="level" class="input-field">
+                            <option value="licence" {{ 'selected' if track and track.level=='licence' }}>Licence (L1,
+                                L2, L3 - 6 semestres)</option>
+                            <option value="master" {{ 'selected' if track and track.level=='master' }}>Master (M1, M2 -
+                                4 semestres)</option>
+                            <option value="doctorat" {{ 'selected' if track and track.level=='doctorat' }}>Doctorat (D1,
+                                D2, D3 - 6 semestres)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Département *</label>
+                        <select disabled class="input-field bg-gray-100 cursor-not-allowed">
+                            <option selected>{{ department.name }}</option>
+                        </select>
+                        <input type="hidden" name="department_id" value="{{ department.id }}">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                        <textarea name="description" rows="3"
+                        <textarea name="description" rows="3" placeholder="Description de la filière..."
                             class="input-field">{{ track.description if track else '' }}</textarea>
                     </div>
+
+                    {% if not track %}
+                    <div class="bg-blue-50 p-4 rounded-lg flex items-start space-x-3">
+                        <div class="flex items-center h-5">
+                            <input type="checkbox" name="auto_generate" id="auto_generate"
+                                class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary" checked>
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="auto_generate" class="font-medium text-gray-700">Générer automatiquement la
+                                structure académique</label>
+                            <p class="text-gray-500">Crée les années et semestres selon le niveau choisi</p>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <div class="flex justify-end space-x-4">
                         <a href="{{ url_for('teacher.department_management') }}" class="btn-secondary">Annuler</a>

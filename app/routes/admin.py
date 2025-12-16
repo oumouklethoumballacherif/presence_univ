@@ -200,7 +200,7 @@ def create_teacher():
         matricule = request.form.get('matricule', '').strip()
         department_id = request.form.get('department_id', type=int)
         
-        if not email or not first_name or not last_name:
+        if not email or not first_name or not last_name or not matricule:
             flash('Tous les champs obligatoires doivent être remplis.', 'danger')
             return render_template('admin/teacher_form.html', departments=departments)
         
@@ -208,7 +208,7 @@ def create_teacher():
             flash('Un utilisateur avec cet email existe déjà.', 'danger')
             return render_template('admin/teacher_form.html', departments=departments)
         
-        if matricule and User.query.filter_by(matricule=matricule).first():
+        if User.query.filter_by(matricule=matricule).first():
             flash('Un utilisateur avec ce matricule existe déjà.', 'danger')
             return render_template('admin/teacher_form.html', departments=departments)
         
@@ -216,7 +216,7 @@ def create_teacher():
             email=email,
             first_name=first_name,
             last_name=last_name,
-            matricule=matricule if matricule else None,
+            matricule=matricule,
             role='teacher',
             department_id=department_id
         )
@@ -1189,7 +1189,7 @@ def create_student():
         track_id = request.form.get('track_id', type=int)
         academic_year_id = request.form.get('academic_year_id', type=int)
         
-        if not email or not first_name or not last_name:
+        if not email or not first_name or not last_name or not matricule:
             flash('Tous les champs obligatoires doivent être remplis.', 'danger')
             return render_template('admin/student_form.html', departments=departments)
         
@@ -1197,7 +1197,7 @@ def create_student():
             flash('Un utilisateur avec cet email existe déjà.', 'danger')
             return render_template('admin/student_form.html', departments=departments)
         
-        if matricule and User.query.filter_by(matricule=matricule).first():
+        if User.query.filter_by(matricule=matricule).first():
             flash('Un utilisateur avec ce matricule existe déjà.', 'danger')
             return render_template('admin/student_form.html', departments=departments)
         
@@ -1205,7 +1205,7 @@ def create_student():
             email=email,
             first_name=first_name,
             last_name=last_name,
-            matricule=matricule if matricule else None,
+            matricule=matricule,
             role='student',
             current_year_id=academic_year_id if academic_year_id else None
         )
@@ -1252,7 +1252,7 @@ def edit_student(id):
         track_id = request.form.get('track_id', type=int)
         academic_year_id = request.form.get('academic_year_id', type=int)
         
-        if not email or not first_name or not last_name:
+        if not email or not first_name or not last_name or not matricule:
             flash('Tous les champs obligatoires doivent être remplis.', 'danger')
             return render_template('admin/student_form.html', student=student, departments=departments)
         
@@ -1261,16 +1261,15 @@ def edit_student(id):
             flash('Un utilisateur avec cet email existe déjà.', 'danger')
             return render_template('admin/student_form.html', student=student, departments=departments)
         
-        if matricule:
-            existing_mat = User.query.filter_by(matricule=matricule).first()
-            if existing_mat and existing_mat.id != student.id:
-                flash('Un utilisateur avec ce matricule existe déjà.', 'danger')
-                return render_template('admin/student_form.html', student=student, departments=departments)
+        existing_mat = User.query.filter_by(matricule=matricule).first()
+        if existing_mat and existing_mat.id != student.id:
+            flash('Un utilisateur avec ce matricule existe déjà.', 'danger')
+            return render_template('admin/student_form.html', student=student, departments=departments)
         
         student.email = email
         student.first_name = first_name
         student.last_name = last_name
-        student.matricule = matricule if matricule else None
+        student.matricule = matricule
         student.current_year_id = academic_year_id if academic_year_id else None
         
         # Update track enrollment

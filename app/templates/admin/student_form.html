@@ -23,6 +23,7 @@
             </div>
 
             <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 
                 <div class="grid grid-cols-2 gap-6 mb-6">
                     <div>
@@ -47,9 +48,10 @@
                 </div>
 
                 <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Numéro Matricule</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Matricule <span
+                            class="text-red-500">*</span></label>
                     <input type="text" name="matricule" value="{{ student.matricule if student else '' }}"
-                        class="input-field">
+                        class="input-field" required>
                 </div>
 
                 <div class="mb-6 bg-gray-50 p-4 rounded-lg">
@@ -93,24 +95,45 @@
 </div>
 
 <script>
-    {% if student %}
-    // Preload data for edit mode
-    window.addEventListener('load', async () => {
-        // Need to pass data from backend to properly pre-select
-        // For now, simpler to rely on basic selection or manual re-selection
-        // Ideally we'd have track_id and current_year_id available in template
-    });
-    {% endif %}
+    // Initial Load Logic (for Edit mode)
+    window.addEventListener('DOMContentLoaded', async () => {
+        // Only run if we are editing a student (student ID exists)
+        {% if student %}
+        const currentDeptId = "{{ student.department_id or '' }}";
+        // Assuming student belongs to one track for now
+        const currentTrackId = "{{ student.enrolled_tracks[0].id if student.enrolled_tracks else '' }}";
+        const currentYearId = "{{ student.current_year_id or '' }}";
 
-    async function loadTracks() {
-        const deptId = document.getElementById('department_select').value;
+        // If we have a department, load tracks
+        if (currentDeptId) {
+            await loadTracks(currentDeptId, currentTrackId);
+        }
+
+        // If we have a track, load years
+        if (currentTrackId) {
+            await loadYears(currentTrackId, currentYearId);
+        }
+        {% endif %}
+    });
+
+    async function loadTracks(deptId, selectedTrackId = null) {
+        // If called by event, get value from this
+        if (!deptId && this) deptId = this.value;
+        // If still no deptId (e.g. event from select but empty value), get it from DOM
+        if (!deptId) deptId = document.getElementById('department_select').value;
+
         const trackSelect = document.getElementById('track_select');
         const yearSelect = document.getElementById('year_select');
 
+        // Reset state
         trackSelect.innerHTML = '<option value="">Chargement...</option>';
         trackSelect.disabled = true;
-        yearSelect.innerHTML = '<option value="">-- D\'abord sélectionner une filière --</option>';
-        yearSelect.disabled = true;
+
+        // Reset Year as well if changing Department (unless we are just initializing)
+        if (!selectedTrackId) {
+            yearSelect.innerHTML = '<option value="">-- D\'abord sélectionner une filière --</option>';
+            yearSelect.disabled = true;
+        }
 
         if (!deptId) {
             trackSelect.innerHTML = '<option value="">-- D\'abord sélectionner un département --</option>';
@@ -124,7 +147,8 @@
 
             trackSelect.innerHTML = '<option value="">-- Sélectionner une filière --</option>';
             tracks.forEach(track => {
-                trackSelect.innerHTML += `<option value="${track.id}">${track.name} (${track.level})</option>`;
+                const isSelected = selectedTrackId && String(track.id) === String(selectedTrackId) ? 'selected' : '';
+                trackSelect.innerHTML += `<option value="${track.id}" ${isSelected}>${track.name} (${track.level})</option>`;
             });
             trackSelect.disabled = false;
         } catch (e) {
@@ -133,8 +157,11 @@
         }
     }
 
-    async function loadYears() {
-        const trackId = document.getElementById('track_select').value;
+    async function loadYears(trackId, selectedYearId = null) {
+        // If called by event
+        if (!trackId && this) trackId = this.value;
+        if (!trackId) trackId = document.getElementById('track_select').value;
+
         const yearSelect = document.getElementById('year_select');
 
         yearSelect.innerHTML = '<option value="">Chargement...</option>';
@@ -152,7 +179,8 @@
 
             yearSelect.innerHTML = '<option value="">-- Sélectionner une année --</option>';
             years.forEach(year => {
-                yearSelect.innerHTML += `<option value="${year.id}">${year.name}</option>`;
+                const isSelected = selectedYearId && String(year.id) === String(selectedYearId) ? 'selected' : '';
+                yearSelect.innerHTML += `<option value="${year.id}" ${isSelected}>${year.name}</option>`;
             });
             yearSelect.disabled = false;
         } catch (e) {
