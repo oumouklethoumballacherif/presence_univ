@@ -375,7 +375,7 @@ def calculate_rattrapage_status(student_id, subject_id):
     """
     Calculate if a student is in rattrapage for a subject.
     Rules:
-    - >= 25% global absences (CM+TD+TP) -> Rattrapage
+    - >= 25% absences in CM -> Rattrapage
     - >= 2 absences in TD -> Rattrapage
     - >= 2 absences in TP -> Rattrapage
     """
@@ -389,60 +389,52 @@ def calculate_rattrapage_status(student_id, subject_id):
         status='completed'
     ).all()
     
-    total_sessions = 0
-    total_absent = 0
+    # Counters
+    cm_total = 0
+    cm_absent = 0
     
     td_absent = 0
     tp_absent = 0
     
     for course in completed_courses:
-        # Increment total sessions count
-        total_sessions += 1
-        
         attendance = Attendance.query.filter_by(
             course_id=course.id,
             student_id=student_id
         ).first()
         
-        # Calculate absences (weighted)
-        current_absent = 0
+        # Determine absence value (1 for absent, 0.5 for late, 0 for present)
+        absence_value = 0
         if attendance:
             if attendance.status == 'absent':
-                current_absent = 1
+                absence_value = 1
             elif attendance.status == 'late':
-                current_absent = 0.5
-        else:
-            # No attendance record = Absent (assuming all students should be marked)
-            # Or should we ignore? Usually if completed, attendance should differ from None.
-            # But let's assume if no record found for a completed course, it might be safe to ignore or treat as present?
-            # Existing code treated "if attendance: ... elif ...". Implicitly treated no record as Present? sw
-            # Let's stick to only counting if attendance exists and is absent/late.
-            # Wait, `cm_td_total += 1` was always incremented. `cm_td_absent` only if attendance.
-            # So no record = Present.
-            pass
+                absence_value = 0.5
+        # If no attendance record, assuming present (or handled elsewhere), staying 0
             
-        total_absent += current_absent
-        
-        # Specific counters
-        if course.course_type == 'TD':
-            td_absent += current_absent
+        # Update counters based on type
+        if course.course_type == 'CM':
+            cm_total += 1
+            cm_absent += absence_value
+        elif course.course_type == 'TD':
+            td_absent += absence_value
         elif course.course_type == 'TP':
-            tp_absent += current_absent
+            tp_absent += absence_value
     
-    # Calculate Global Absence Rate
-    absence_rate = total_absent / total_sessions if total_sessions > 0 else 0.0
+    # Calculate CM Absence Rate
+    cm_absence_rate = cm_absent / cm_total if cm_total > 0 else 0.0
     
     # Check rattrapage conditions
-    is_rattrapage_rate = absence_rate >= 0.25
+    is_rattrapage_rate = cm_absence_rate >= 0.25
     is_rattrapage_td = td_absent >= 2
     is_rattrapage_tp = tp_absent >= 2
     
     is_rattrapage = is_rattrapage_rate or is_rattrapage_td or is_rattrapage_tp
     
     stats = {
-        'total_sessions': total_sessions,
-        'total_absent': total_absent,
-        'absence_rate': absence_rate,
+        'total_sessions': len(completed_courses),
+        'cm_total': cm_total,
+        'cm_absent': cm_absent,
+        'absence_rate': cm_absence_rate, # Now specifically CM rate
         'td_absent': td_absent,
         'tp_absent': tp_absent,
         'is_rattrapage': is_rattrapage,
@@ -450,7 +442,7 @@ def calculate_rattrapage_status(student_id, subject_id):
     }
     
     if is_rattrapage_rate:
-        stats['reasons'].append(f"Taux d'absences global ≥ 25% ({int(absence_rate*100)}%)")
+        stats['reasons'].append(f"Taux d'absences CM ≥ 25% ({int(cm_absence_rate*100)}%)")
     if is_rattrapage_td:
         stats['reasons'].append(f"{td_absent} absence(s) en TD (Max 2)")
     if is_rattrapage_tp:
@@ -462,36 +454,37 @@ def calculate_rattrapage_status(student_id, subject_id):
 def calculate_attendance_grade(student_id, subject_id):
     """
     Calculate attendance grade out of 20 for a subject.
-    Based on presence rate.
+    Based ONLY on CM presence rate.
     """
     subject = Subject.query.get(subject_id)
     if not subject:
         return 0
     
-    completed_courses = Course.query.filter_by(
+    # Get only completed CM courses
+    completed_cm_courses = Course.query.filter_by(
         subject_id=subject_id,
-        status='completed'
+        status='completed',
+        course_type='CM'
     ).all()
     
-    cm_td_total = 0
-    cm_td_points = 0
+    cm_total = 0
+    cm_points = 0
     
-    for course in completed_courses:
-        if course.course_type in ['CM', 'TD']:
-            cm_td_total += 1
-            attendance = Attendance.query.filter_by(
-                course_id=course.id,
-                student_id=student_id
-            ).first()
-            
-            if attendance:
-                if attendance.status == 'present':
-                    cm_td_points += 1
-                elif attendance.status == 'late':
-                    cm_td_points += 0.5
+    for course in completed_cm_courses:
+        cm_total += 1
+        attendance = Attendance.query.filter_by(
+            course_id=course.id,
+            student_id=student_id
+        ).first()
+        
+        if attendance:
+            if attendance.status == 'present':
+                cm_points += 1
+            elif attendance.status == 'late':
+                cm_points += 0.5
     
-    if cm_td_total == 0:
+    if cm_total == 0:
         return 20.0
         
-    rate = cm_td_points / cm_td_total
+    rate = cm_points / cm_total
     return round(rate * 20, 2)
