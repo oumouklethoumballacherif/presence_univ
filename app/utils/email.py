@@ -9,7 +9,13 @@ def send_async_email(app, msg):
         try:
             mail.send(msg)
         except Exception as e:
-            print(f"Error sending email: {e}")
+            print(f"🚨 ERREUR ENVOI EMAIL (Mode Secours) 🚨")
+            print(f"Erreur: {e}")
+            print(f"Pour: {msg.recipients}")
+            print(f"Sujet: {msg.subject}")
+            print("--- CONTENU DU MAIL (Copiez le lien qui commence par http... ci-dessous) ---")
+            print(msg.body or msg.html)
+            print("---------------------------------------------------")
 
 
 def send_email(subject, recipient, html_body, text_body=None):

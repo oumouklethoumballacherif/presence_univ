@@ -217,53 +217,58 @@ def record_attendance():
     if not attendance_token or not attendance_token.is_valid():
         return jsonify({'success': False, 'message': 'QR code expiré. Veuillez rescanner.'}), 400
     
-    # Check if student is enrolled in the track
-    # Check if student is enrolled in the track
-    year = course.subject.semester.academic_year
-    track = year.track
-    
-    if track not in current_user.enrolled_tracks:
-        return jsonify({'success': False, 'message': 'Vous n\'êtes pas inscrit à cette filière'}), 403
+    try:
+        # Check if student is enrolled in the track
+        # Check if student is enrolled in the track
+        year = course.subject.semester.academic_year
+        track = year.track
         
-    # Check if student is in the correct academic year
-    if current_user.current_year_id != year.id:
-        return jsonify({'success': False, 'message': 'Cette séance ne correspond pas à votre année académique'}), 403
-    
-    # Get or create attendance record
-    attendance = Attendance.query.filter_by(
-        course_id=course_id,
-        student_id=current_user.id
-    ).first()
-    
-    if not attendance:
-        attendance = Attendance(
+        if track not in current_user.enrolled_tracks:
+            return jsonify({'success': False, 'message': 'Vous n\'êtes pas inscrit à cette filière'}), 403
+            
+        # Check if student is in the correct academic year
+        if current_user.current_year_id != year.id:
+            return jsonify({'success': False, 'message': 'Cette séance ne correspond pas à votre année académique'}), 403
+        
+        # Get or create attendance record
+        attendance = Attendance.query.filter_by(
             course_id=course_id,
             student_id=current_user.id
-        )
-        db.session.add(attendance)
-    
-    if attendance.status == 'present':
-        return jsonify({
-            'success': True, 
-            'message': 'Présence déjà enregistrée!',
-            'already_recorded': True
-        })
-    
-    attendance.scanned_at = datetime.utcnow()
-    
-    # Calculate status based on time (Late if > threshold)
-    if course.started_at:
-        delta = (attendance.scanned_at - course.started_at).total_seconds()
-        threshold_seconds = current_app.config.get('LATE_THRESHOLD_MINUTES', 20) * 60
+        ).first()
         
-        if delta > threshold_seconds:
-            attendance.status = 'late'
+        if not attendance:
+            attendance = Attendance(
+                course_id=course_id,
+                student_id=current_user.id
+            )
+            db.session.add(attendance)
+        
+        if attendance.status == 'present':
+            return jsonify({
+                'success': True, 
+                'message': 'Présence déjà enregistrée!',
+                'already_recorded': True
+            })
+        
+        attendance.scanned_at = datetime.utcnow()
+        
+        # Calculate status based on time (Late if > threshold)
+        if course.started_at:
+            delta = (attendance.scanned_at - course.started_at).total_seconds()
+            threshold_seconds = current_app.config.get('LATE_THRESHOLD_MINUTES', 20) * 60
+            
+            if delta > threshold_seconds:
+                attendance.status = 'late'
+            else:
+                attendance.status = 'present'
         else:
             attendance.status = 'present'
-    else:
-        attendance.status = 'present'
-        
-    db.session.commit()
+            
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Attendance Scan Error: {str(e)}")
+        return jsonify({'success': False, 'message': f'Erreur serveur: {str(e)}'}), 500
     
     return jsonify({
         'success': True,

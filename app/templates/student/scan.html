@@ -72,7 +72,23 @@
             },
             body: JSON.stringify({ qr_data: decodedText })
         })
-            .then(response => response.json())
+            .then(async response => {
+                const isJson = response.headers.get('content-type')?.includes('application/json');
+                const data = isJson ? await response.json() : null;
+
+                if (!response.ok) {
+                    // Get error message from JSON or use status text
+                    const error = (data && data.message) || response.statusText;
+                    return Promise.reject(error || 'Erreur serveur (' + response.status + ')');
+                }
+
+                // If success status but invalid data (shouldn't happen with proper backend)
+                if (!data) {
+                    return Promise.reject('Réponse serveur invalide (Non-JSON)');
+                }
+
+                return data;
+            })
             .then(data => {
                 document.getElementById('result').classList.remove('hidden');
 
@@ -91,27 +107,23 @@
                         window.location.href = '{{ url_for("student.dashboard") }}';
                     }, 2000);
                 } else {
-                    document.getElementById('error-message').classList.remove('hidden');
-                    document.getElementById('success-message').classList.add('hidden');
-                    document.getElementById('error-text').textContent = data.message;
-
-                    // Restart scanner after 3 seconds
-                    setTimeout(() => {
-                        document.getElementById('result').classList.add('hidden');
-                        startScanner();
-                    }, 3000);
+                    throw new Error(data.message || 'Erreur inconnue');
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+                console.error('Scan Error:', error);
                 document.getElementById('result').classList.remove('hidden');
                 document.getElementById('error-message').classList.remove('hidden');
-                document.getElementById('error-text').textContent = 'Erreur de connexion';
 
+                // Display the actual error message
+                const errorMsg = typeof error === 'string' ? error : (error.message || 'Erreur de connexion');
+                document.getElementById('error-text').textContent = errorMsg;
+
+                // Restart scanner after 5 seconds (gave slightly more time to read error)
                 setTimeout(() => {
                     document.getElementById('result').classList.add('hidden');
                     startScanner();
-                }, 3000);
+                }, 5000);
             });
     }
 
