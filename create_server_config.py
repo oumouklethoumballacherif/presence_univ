@@ -10,9 +10,9 @@ config_content = """class LocalConfig:
     SQLALCHEMY_TRACK_MODIFICATIONS = False    
 
     # Email
-    MAIL_USERNAME = 'balla33cherif@gmail.com' 
-    MAIL_PASSWORD = 'boyf sath nlti omdb'     
-    MAIL_DEFAULT_SENDER = ('UIR Présence', 'balla33cherif@gmail.com')
+    MAIL_USERNAME = 'oumaimajb4@gmail.com' 
+    MAIL_PASSWORD = 'lufe spzn fkmo gkry'     
+    MAIL_DEFAULT_SENDER = ('UIR Présence', 'oumaimajb4@gmail.com')
 """
 
 file_path = os.path.join('app', 'config_local.py')
