@@ -685,19 +685,18 @@ def subject_attendance(id):
                 student_id=student.id
             ).first()
             
-            if attendance:
+            # CM Only Logic for visual consistency
+            if course.course_type == 'CM':
                 total += 1
-                if attendance.status == 'present':
-                    present += 1
-            
-            # CM/TD Rate Logic (counts late as 0.5)
-            if course.course_type in ['CM', 'TD']:
-                cm_td_total += 1
                 if attendance:
                     if attendance.status == 'present':
+                        present += 1
                         cm_td_points += 1
                     elif attendance.status == 'late':
+                        present += 0.5
                         cm_td_points += 0.5
+                
+                cm_td_total += 1
             
             student_attendance['courses'].append({
                 'course': course,
