@@ -55,6 +55,7 @@
             </a>
             <form action="{{ url_for('teacher.end_course', id=course.id) }}" method="POST"
                 onsubmit="return confirm('Voulez-vous vraiment terminer la séance ?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                 <button type="submit" class="btn-primary bg-red-600 hover:bg-red-700">
                     <i class="fas fa-stop mr-2"></i>Terminer la séance
                 </button>
@@ -86,7 +87,8 @@
             const response = await fetch(`/teacher/course/${courseId}/refresh-qr`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
                 }
             });
 
@@ -139,7 +141,8 @@
             const response = await fetch(`/teacher/course/${courseId}/refresh-qr`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
                 }
             });
 

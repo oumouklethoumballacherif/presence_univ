@@ -13,6 +13,9 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///app.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
+    # CSRF Protection enabled
+    WTF_CSRF_ENABLED = True
+    
     # Email Configuration
     MAIL_SERVER = 'smtp.gmail.com'
     MAIL_PORT = 587

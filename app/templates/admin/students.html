@@ -72,6 +72,7 @@
 
         <div class="flex justify-end mb-6 space-x-4">
             <form action="{{ url_for('admin.purge_graduated_students') }}" method="POST" class="inline-block">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                 <button type="submit"
                     onclick="return confirm('ATTENTION : Voulez-vous vraiment supprimer définitivement tous les étudiants diplômés ?\n\n- Cette action est irréversible.\n- Tout l\'historique (présences, notes) sera perdu.')"
                     class="bg-white text-red-600 border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center">
@@ -232,7 +233,8 @@
     }
 
     // Suppression groupée
-    function bulkDelete() {
+    // Suppression groupée (AJAX)
+    async function bulkDelete() {
         const checkboxes = document.querySelectorAll('.student-checkbox:checked');
         const studentIds = Array.from(checkboxes).map(cb => cb.value);
 
@@ -246,24 +248,46 @@
             return;
         }
 
-        // Créer un formulaire pour chaque étudiant
-        let deletedCount = 0;
-        studentIds.forEach((id, index) => {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/admin/students/${id}/delete`;
+        const csrfToken = "{{ csrf_token() }}";
+        let successCount = 0;
+        let errorCount = 0;
 
-            setTimeout(() => {
-                document.body.appendChild(form);
-                form.submit();
-                deletedCount++;
+        // Show loading state cursor
+        document.body.style.cursor = 'wait';
 
-                // Recharger la page après la dernière suppression
-                if (deletedCount === studentIds.length) {
-                    setTimeout(() => window.location.reload(), 500);
+        for (const id of studentIds) {
+            try {
+                const formData = new FormData();
+                formData.append('csrf_token', csrfToken);
+
+                const response = await fetch(`/admin/students/${id}/delete`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (response.ok || response.redirected) {
+                    successCount++;
+                } else {
+                    console.error(`Erreur suppression ${id}:`, response.statusText);
+                    errorCount++;
                 }
-            }, index * 100);
-        });
+            } catch (error) {
+                console.error(`Erreur suppression ${id}:`, error);
+                errorCount++;
+            }
+        }
+
+        document.body.style.cursor = 'default';
+
+        if (successCount > 0) {
+            // Reload page to reflect changes
+            window.location.reload();
+        } else if (errorCount > 0) {
+            alert("Une erreur est survenue lors de la suppression. Veuillez réessayer.");
+        }
     }
 
     // Initialisation

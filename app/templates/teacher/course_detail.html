@@ -32,6 +32,7 @@
                     <div>
                         {% if course.status == 'pending' %}
                         <form action="{{ url_for('teacher.start_course', id=course.id) }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                             <button type="submit" class="btn-primary bg-green-600 hover:bg-green-700">
                                 <i class="fas fa-play mr-2"></i>Démarrer la séance
                             </button>
@@ -250,6 +251,7 @@
 
         const formData = new FormData();
         formData.append('status', newStatus);
+        formData.append('csrf_token', '{{ csrf_token() }}');
 
         fetch(`/teacher/course/${courseId}/attendance/${studentId}/update`, {
             method: 'POST',

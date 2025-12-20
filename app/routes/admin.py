@@ -1298,6 +1298,9 @@ def delete_student(id):
         flash('Utilisateur non trouvé.', 'danger')
         return redirect(url_for('admin.students'))
     
+    # Delete related attendance records manually to ensure clean deletion
+    Attendance.query.filter_by(student_id=student.id).delete()
+    
     name = student.full_name
     db.session.delete(student)
     db.session.commit()

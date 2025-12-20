@@ -236,7 +236,8 @@
     }
 
     // Suppression groupée
-    function bulkDelete() {
+    // Suppression groupée (AJAX)
+    async function bulkDelete() {
         const checkboxes = document.querySelectorAll('.teacher-checkbox:checked');
         const teacherIds = Array.from(checkboxes).map(cb => cb.value);
 
@@ -250,24 +251,44 @@
             return;
         }
 
-        // Créer un formulaire pour chaque enseignant
-        let deletedCount = 0;
-        teacherIds.forEach((id, index) => {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/admin/teachers/${id}/delete`;
+        const csrfToken = "{{ csrf_token() }}";
+        let successCount = 0;
+        let errorCount = 0;
 
-            setTimeout(() => {
-                document.body.appendChild(form);
-                form.submit();
-                deletedCount++;
+        document.body.style.cursor = 'wait';
 
-                // Recharger la page après la dernière suppression
-                if (deletedCount === teacherIds.length) {
-                    setTimeout(() => window.location.reload(), 500);
+        for (const id of teacherIds) {
+            try {
+                const formData = new FormData();
+                formData.append('csrf_token', csrfToken);
+
+                const response = await fetch(`/admin/teachers/${id}/delete`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (response.ok || response.redirected) {
+                    successCount++;
+                } else {
+                    console.error(`Erreur suppression ${id}:`, response.statusText);
+                    errorCount++;
                 }
-            }, index * 100);
-        });
+            } catch (error) {
+                console.error(`Erreur suppression ${id}:`, error);
+                errorCount++;
+            }
+        }
+
+        document.body.style.cursor = 'default';
+
+        if (successCount > 0) {
+            window.location.reload();
+        } else if (errorCount > 0) {
+            alert("Une erreur est survenue lors de la suppression. Veuillez réessayer.");
+        }
     }
 
     // Initialisation
