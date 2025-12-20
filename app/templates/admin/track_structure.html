@@ -41,6 +41,7 @@
                     </a>
                     <form action="{{ url_for('admin.delete_academic_year', id=year.id) }}" method="POST" class="inline"
                         onsubmit="return confirm('Supprimer cette année et tous ses semestres/matières?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                         <button type="submit" class="text-red-500 hover:text-red-700 p-2" title="Supprimer">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -68,6 +69,7 @@
                         </a>
                         <form action="{{ url_for('admin.delete_semester', id=semester.id) }}" method="POST"
                             class="inline" onsubmit="return confirm('Supprimer ce semestre et toutes ses matières?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                             <button type="submit" class="text-red-500 hover:text-red-700 p-2" title="Supprimer">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -125,6 +127,7 @@
                                         <form action="{{ url_for('admin.delete_subject', id=subject.id) }}"
                                             method="POST" class="inline"
                                             onsubmit="return confirm('Supprimer cette matière?')">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                                             <button type="submit" class="text-red-500 hover:text-red-700 p-1"
                                                 title="Supprimer">
                                                 <i class="fas fa-trash"></i>

@@ -70,6 +70,7 @@
                     </a>
                     <form action="{{ url_for('admin.delete_track', id=track.id) }}" method="POST" class="inline"
                         onsubmit="return confirm('Supprimer cette filière et toute sa structure?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                         <button type="submit" class="p-2 text-red-500 hover:bg-red-50 rounded-lg" title="Supprimer">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -130,6 +131,7 @@
                                             </a>
                                             <form action="{{ url_for('admin.delete_subject', id=subject.id) }}"
                                                 method="POST" class="inline" onsubmit="return confirm('Supprimer?')">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                                                 <button type="submit" class="text-red-500 hover:text-red-700"
                                                     title="Supprimer">
                                                     <i class="fas fa-trash"></i>
