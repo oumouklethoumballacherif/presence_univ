@@ -190,28 +190,32 @@ def teachers():
 @login_required
 @admin_required
 def create_teacher():
-    """Create a new teacher"""
+    """Create a new teacher safely"""
     departments = Department.query.order_by(Department.name).all()
-    
+
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         first_name = request.form.get('first_name', '').strip()
         last_name = request.form.get('last_name', '').strip()
         matricule = request.form.get('matricule', '').strip()
         department_id = request.form.get('department_id', type=int)
-        
+
+        # Validation des champs obligatoires
         if not email or not first_name or not last_name or not matricule:
             flash('Tous les champs obligatoires doivent être remplis.', 'danger')
             return render_template('admin/teacher_form.html', departments=departments)
-        
+
+        # Vérification doublon email
         if User.query.filter_by(email=email).first():
             flash('Un utilisateur avec cet email existe déjà.', 'danger')
             return render_template('admin/teacher_form.html', departments=departments)
-        
+
+        # Vérification doublon matricule
         if User.query.filter_by(matricule=matricule).first():
             flash('Un utilisateur avec ce matricule existe déjà.', 'danger')
             return render_template('admin/teacher_form.html', departments=departments)
-        
+
+        # Création de l'enseignant
         teacher = User(
             email=email,
             first_name=first_name,
@@ -220,22 +224,21 @@ def create_teacher():
             role='teacher',
             department_id=department_id
         )
-        
+
+        # Commit obligatoire pour sauvegarder l'utilisateur avant l'email
         db.session.add(teacher)
         db.session.commit()
-        
-        # Send password creation email
+
+        # Envoi du mail dans un try/except séparé
         try:
             send_password_creation_email(teacher)
-            db.session.commit()
             flash(f'Enseignant "{first_name} {last_name}" créé. Email envoyé!', 'success')
         except Exception as e:
             flash(f'Enseignant créé mais erreur d\'envoi email: {str(e)}', 'warning')
-        
-        return redirect(url_for('admin.teachers'))
-    
-    return render_template('admin/teacher_form.html', departments=departments)
 
+        return redirect(url_for('admin.teachers'))
+
+    return render_template('admin/teacher_form.html', departments=departments)
 
 @admin_bp.route('/teachers/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
