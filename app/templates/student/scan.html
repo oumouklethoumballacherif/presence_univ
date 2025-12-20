@@ -4,6 +4,7 @@
 
 {% block extra_head %}
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <style>
     #reader {
         width: 100%;
@@ -64,11 +65,15 @@
             html5QrCode.stop().catch(err => console.error(err));
         }
 
+        // Get CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
         // Send to server
         fetch('{{ url_for("student.record_attendance") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
             },
             body: JSON.stringify({ qr_data: decodedText })
         })
