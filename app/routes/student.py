@@ -64,13 +64,19 @@ def dashboard():
                         course_type='CM'
                     ).count()
                     
-                    # Count CM presences
-                    presences = Attendance.query.join(Course).filter(
+                    # Calculate weighted CM presences (Present=1, Late=0.5)
+                    cm_attendances = Attendance.query.join(Course).filter(
                         Course.subject_id == subject.id,
                         Attendance.student_id == current_user.id,
-                        Attendance.status == 'present',
                         Course.course_type == 'CM'
-                    ).count()
+                    ).all()
+                    
+                    presences = 0
+                    for att in cm_attendances:
+                        if att.status == 'present':
+                            presences += 1
+                        elif att.status == 'late':
+                            presences += 0.5
                     
                     semester_data['subjects'].append({
                         'subject': subject,
@@ -129,20 +135,35 @@ def subject_detail(id):
         if course.status == 'completed':
             if course.course_type == 'CM':
                 completed_cm += 1
-                if attendance and attendance.status == 'present':
-                    present_cm += 1
+                if attendance:
+                    if attendance.status == 'present':
+                        present_cm += 1
+                    elif attendance.status == 'late':
+                        present_cm += 0.5
+                    else:
+                        absent_cm += 1
                 else:
                     absent_cm += 1
             elif course.course_type == 'TD':
                 completed_td += 1
-                if attendance and attendance.status == 'present':
-                    present_td += 1
+                if attendance:
+                    if attendance.status == 'present':
+                        present_td += 1
+                    elif attendance.status == 'late':
+                        present_td += 0.5
+                    else:
+                        absent_td += 1
                 else:
                     absent_td += 1
             elif course.course_type == 'TP':
                 completed_tp += 1
-                if attendance and attendance.status == 'present':
-                    present_tp += 1
+                if attendance:
+                    if attendance.status == 'present':
+                        present_tp += 1
+                    elif attendance.status == 'late':
+                        present_tp += 0.5
+                    else:
+                        absent_tp += 1
                 else:
                     absent_tp += 1
     
