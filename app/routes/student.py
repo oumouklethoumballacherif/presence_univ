@@ -57,17 +57,19 @@ def dashboard():
                     is_rattrapage, stats = calculate_rattrapage_status(current_user.id, subject.id)
                     grade = calculate_attendance_grade(current_user.id, subject.id)
                     
-                    # Count completed sessions
+                    # Count completed CM sessions (for rate calculation)
                     completed_courses = Course.query.filter_by(
                         subject_id=subject.id,
-                        status='completed'
+                        status='completed',
+                        course_type='CM'
                     ).count()
                     
-                    # Count presences
+                    # Count CM presences
                     presences = Attendance.query.join(Course).filter(
                         Course.subject_id == subject.id,
                         Attendance.student_id == current_user.id,
-                        Attendance.status == 'present'
+                        Attendance.status == 'present',
+                        Course.course_type == 'CM'
                     ).count()
                     
                     semester_data['subjects'].append({
